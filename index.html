@@ -9,15 +9,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-primary: #000000;
-      --bg-secondary: #1c1c1e;
-      --bg-tertiary: #2c2c2e;
-      --bg-card: #1c1c1e;
+      --bg-primary: #0F1D36;
+      --bg-secondary: #172B4D;
+      --bg-tertiary: #203A63;
+      --bg-card: #172B4D;
       --text-primary: #ffffff;
       --text-secondary: #8e8e93;
       --text-tertiary: #636366;
-      --accent: #0A84FF;
-      --accent-light: rgba(10, 132, 255, 0.15);
+      --accent: #D8A033;
+      --accent-light: rgba(216, 160, 51, 0.15);
       --green: #30D158;
       --green-bg: rgba(48, 209, 88, 0.15);
       --yellow: #FFD60A;
@@ -30,8 +30,8 @@
       --purple-bg: rgba(191, 90, 242, 0.15);
       --border: rgba(255, 255, 255, 0.08);
       --shadow: rgba(0, 0, 0, 0.3);
-      --header-bg: rgba(0, 0, 0, 0.85);
-      --nav-bg: rgba(0, 0, 0, 0.9);
+      --header-bg: rgba(15, 29, 54, 0.85);
+      --nav-bg: rgba(15, 29, 54, 0.95);
       --overlay-bg: rgba(0, 0, 0, 0.6);
       --confirm-bg: rgba(0, 0, 0, 0.7);
       --radius: 14px;
@@ -527,7 +527,7 @@
     <div class="header-left">
       <button class="header-btn icon" id="exportBtn" title="Экспорт">📤</button>
     </div>
-    <h1 class="header-title"><span class="sync-dot offline" id="syncDot"></span> Apple Store</h1>
+    <h1 class="header-title"><span class="sync-dot offline" id="syncDot"></span> Lev Store</h1>
     <div class="header-right">
       <button class="header-btn icon" id="settingsBtn" title="Настройки">⚙️</button>
       <button class="header-btn icon" id="importBtn" title="Импорт">📥</button>
@@ -1218,7 +1218,37 @@ function renderDeliveries() {
 }
 
 // ============================================================
-// EXPENSES
+// COPY CLIENT MESSAGE
+// ============================================================
+window.copyClientMessage = function(lang, id) {
+  const d = state.deliveriesOut.find(x => x.id === id);
+  if (!d) return;
+
+  const p = state.products.find(x => x.id === d.productId);
+  const itemName = p ? p.name : (d.item || 'товар');
+  const track = d.trackNumber ? d.trackNumber : 'уточняется';
+  const amount = d.sellPrice || 0;
+
+  let text = '';
+  if (lang === 'ua') {
+    text = `Вітаємо! Ваше замовлення (${itemName}) відправлено. ТТН: ${track}. До сплати: ${amount} ₴. Дякуємо за покупку в Lev Store! Наступного разу використайте промокод LEV, щоб отримати знижку 10%!`;
+  } else {
+    text = `Hello! Your order (${itemName}) has been shipped. Tracking number: ${track}. Total to pay: ${amount} ₴. Thank you for shopping with Lev Store! Use promo code LEV next time to get a 10% discount!`;
+  }
+
+  const tempInput = document.createElement('textarea');
+  tempInput.value = text;
+  document.body.appendChild(tempInput);
+  tempInput.select();
+  document.execCommand('copy');
+  document.body.removeChild(tempInput);
+
+  haptic('success');
+  showToast('✅ Сообщение скопировано!', true);
+};
+
+// ============================================================
+// INIT
 // ============================================================
 function renderExpenses() {
   const now = new Date();
@@ -1315,62 +1345,103 @@ function renderExpenses() {
 // ============================================================
 // DASHBOARD
 // ============================================================
+window.setDashFilter = function(filter) {
+  state.dashFilter = filter;
+  saveState();
+  haptic('light');
+  renderDashboard();
+};
+
 function renderDashboard() {
   const el = document.getElementById('dashboard-content');
   const now = new Date();
+  const filter = state.dashFilter || 'month'; // 'month' or 'all'
 
+  const isCurrentMonth = (dateString) => {
+    if (!dateString) return false;
+    const d = new Date(dateString);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  };
+
+  const expenses = filter === 'month' ? state.expenses.filter(e => isCurrentMonth(e.date)) : state.expenses;
+  const deliveriesOut = filter === 'month' ? state.deliveriesOut.filter(d => isCurrentMonth(d.date)) : state.deliveriesOut;
+  const deliveriesIn = filter === 'month' ? state.deliveriesIn.filter(d => isCurrentMonth(d.expectedDate || d.createdAt)) : state.deliveriesIn;
+
+  // Inventory stats (always global, not time-filtered)
   const totalInvested = state.products.reduce((s, p) => s + p.buyPrice * (p.quantity || 0), 0);
   const totalSell = state.products.reduce((s, p) => s + p.sellPrice * (p.quantity || 0), 0);
-  const totalProfit = totalSell - totalInvested;
   const totalUnits = state.products.reduce((s, p) => s + (p.quantity || 0), 0);
+  const lowStock = state.products.filter(p => (p.quantity || 0) <= 2);
 
-  const thisMonthExpenses = state.expenses.filter(e => {
-    const d = new Date(e.date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
-  const totalExpenses = thisMonthExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+  // Financials
+  const successfulOut = deliveriesOut.filter(d => d.status !== 'Отказ/Возврат');
+  const totalRevenue = successfulOut.reduce((s, d) => s + (d.sellPrice || 0), 0);
+  
+  const cogs = successfulOut.reduce((s, d) => {
+    const p = state.products.find(x => x.id === d.productId);
+    return s + (p ? p.buyPrice * (d.quantity || 1) : 0);
+  }, 0);
+
+  const returns = deliveriesOut.filter(d => d.status === 'Отказ/Возврат');
+  const returnLoss = returns.reduce((s, d) => s + (d.deliveryCost || 0), 0);
+
+  const totalDeliveryCost = deliveriesOut.reduce((s, d) => s + (d.deliveryCost || 0), 0);
+  const totalExpensesAmount = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+  const netProfit = totalRevenue - cogs - totalDeliveryCost - totalExpensesAmount;
 
   const inTransit = state.deliveriesIn.filter(d => d.status !== 'Доставлено').length;
   const outPending = state.deliveriesOut.filter(d => d.status !== 'Получено').length;
 
-  const topProducts = [...state.products].filter(p => p.buyPrice > 0)
-    .map(p => ({ ...p, marginPct: ((p.sellPrice - p.buyPrice) / p.buyPrice * 100) }))
-    .sort((a, b) => b.marginPct - a.marginPct).slice(0, 5);
-
-  const zeroStock = state.products.filter(p => (p.quantity || 0) === 0);
-  const totalRevenue = state.deliveriesOut.filter(d => d.status !== 'Отказ/Возврат').reduce((s, d) => s + (d.sellPrice || 0), 0);
-
-  const returns = state.deliveriesOut.filter(d => d.status === 'Отказ/Возврат');
-  const returnLoss = returns.reduce((s, d) => s + (d.deliveryCost || 0), 0);
+  // Clients
+  const clientMap = {};
+  successfulOut.forEach(d => {
+    if (!d.client) return;
+    const name = d.client.trim();
+    if (name.length < 2) return;
+    if (!clientMap[name]) clientMap[name] = { count: 0, spent: 0 };
+    clientMap[name].count++;
+    clientMap[name].spent += (d.sellPrice || 0);
+  });
+  const topClients = Object.entries(clientMap).map(([name, data]) => ({ name, ...data })).filter(c => c.count > 1 || c.spent >= 500).sort((a,b) => b.spent - a.spent).slice(0, 5);
 
   let html = `
-    <div class="summary-grid">
-      <div class="summary-card accent"><div class="label">💰 Вложено</div><div class="value">${fmtCurrency(totalInvested)}</div></div>
-      <div class="summary-card"><div class="label">📈 На продажу</div><div class="value">${fmtCurrency(totalSell)}</div></div>
-      <div class="summary-card green"><div class="label">🎯 Потенц. прибыль</div><div class="value">${fmtCurrency(totalProfit)}</div></div>
-      <div class="summary-card"><div class="label">💵 Реализовано</div><div class="value">${fmtCurrency(totalRevenue)}</div></div>
+    <div class="segment-control" style="margin-bottom: 16px;">
+      <button class="segment-btn ${filter === 'month' ? 'active' : ''}" onclick="setDashFilter('month')">Этот месяц</button>
+      <button class="segment-btn ${filter === 'all' ? 'active' : ''}" onclick="setDashFilter('all')">Всё время</button>
     </div>
+
+    <div class="summary-grid">
+      <div class="summary-card green" style="grid-column: span 2; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px;">
+        <div class="label" style="font-size: 14px; opacity: 0.9;">💵 Чистая прибыль</div>
+        <div class="value" style="font-size: 28px;">${fmtCurrency(netProfit)}</div>
+        <div class="sub" style="opacity: 0.7;">Выручка минус закупка, доставка и расходы</div>
+      </div>
+      <div class="summary-card"><div class="label">📈 Выручка</div><div class="value">${fmtCurrency(totalRevenue)}</div><div class="sub">${successfulOut.length} продаж</div></div>
+      <div class="summary-card accent"><div class="label">📦 Товарный запас</div><div class="value">${fmtCurrency(totalInvested)}</div><div class="sub">Вложено в склад</div></div>
+    </div>
+    
     <div class="dash-section">
-      <div class="dash-section-title">📊 Обзор</div>
+      <div class="dash-section-title">📊 Обзор операций</div>
       <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--accent-light)">📦</div><div><div class="name">Товары на складе</div><div class="detail">${state.products.length} позиций</div></div></div><div class="right"><div class="amount">${fmt(totalUnits)} шт</div></div></div>
       <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--yellow-bg)">🚚</div><div><div class="name">В пути к нам</div><div class="detail">Входящие доставки</div></div></div><div class="right"><div class="amount">${inTransit}</div></div></div>
       <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--green-bg)">🚀</div><div><div class="name">Отправлено</div><div class="detail">Исходящие доставки</div></div></div><div class="right"><div class="amount">${outPending}</div></div></div>
-      <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">💸</div><div><div class="name">Расходы (месяц)</div><div class="detail">${thisMonthExpenses.length} записей</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(totalExpenses)}</div></div></div>
+      <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">💸</div><div><div class="name">Расходы</div><div class="detail">${expenses.length} записей + логистика</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(totalExpensesAmount + totalDeliveryCost)}</div></div></div>
       ${returns.length > 0 ? `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">🔙</div><div><div class="name">Отказы / Возвраты</div><div class="detail">${returns.length} шт</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(returnLoss)}</div><div class="sub">Потери на доставке</div></div></div>` : ''}
     </div>`;
 
-  if (topProducts.length > 0) {
-    html += `<div class="dash-section"><div class="dash-section-title">🏆 Топ по маржинальности</div>`;
-    topProducts.forEach((p, i) => {
-      html += `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--bg-tertiary);font-size:14px;font-weight:700">${i + 1}</div><div><div class="name">${p.name}</div><div class="detail">${p.category} · ${p.quantity || 0} шт</div></div></div><div class="right"><div class="amount ${getMarginClass(p.marginPct)}">${p.marginPct.toFixed(0)}%</div><div class="sub">${fmtCurrency(p.sellPrice - p.buyPrice)}/шт</div></div></div>`;
+  if (topClients.length > 0) {
+    html += `<div class="dash-section"><div class="dash-section-title">👑 Топ клиенты (Лояльность)</div>
+    <div style="font-size: 13px; color: var(--text-secondary); margin: -6px 0 12px 4px;">Предлагайте скидку 10% по промокоду <b>LEV</b>!</div>`;
+    topClients.forEach((c, i) => {
+      html += `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--purple-bg);font-size:14px;font-weight:700">${i + 1}</div><div><div class="name">${c.name}</div><div class="detail">${c.count} покупок</div></div></div><div class="right"><div class="amount text-purple">${fmtCurrency(c.spent)}</div></div></div>`;
     });
     html += `</div>`;
   }
 
-  if (zeroStock.length > 0) {
+  if (lowStock.length > 0) {
     html += `<div class="dash-section"><div class="dash-section-title">⚠️ Пора заказывать</div>`;
-    zeroStock.forEach(p => {
-      html += `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">⚠️</div><div><div class="name">${p.name}</div><div class="detail">${p.category}</div></div></div><div class="right"><div class="amount text-red">0 шт</div></div></div>`;
+    lowStock.forEach(p => {
+      html += `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">⚠️</div><div><div class="name">${p.name}</div><div class="detail">${p.category}</div></div></div><div class="right"><div class="amount text-red">${p.quantity || 0} шт</div></div></div>`;
     });
     html += `</div>`;
   }
@@ -1529,7 +1600,13 @@ function getFormHTML(type, item) {
         </div>
         <div class="form-group"><label class="form-label">Трек-номер</label>
           <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно"></div>
-        <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
+        ${item ? `
+          <div class="form-row mt-16" style="margin-top: 12px; gap: 8px;">
+            <button type="button" class="btn" style="background:var(--bg-tertiary);flex:1;font-size:13px;" onclick="copyClientMessage('ua', '${v.id}')">ТТН (UA)</button>
+            <button type="button" class="btn" style="background:var(--bg-tertiary);flex:1;font-size:13px;" onclick="copyClientMessage('en', '${v.id}')">ТТН (EN)</button>
+          </div>
+        ` : ''}
+        <button type="submit" class="btn btn-primary" style="margin-top: ${item ? '12px' : '0'}">${item ? 'Сохранить' : 'Добавить'}</button>
         ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
     }
 
