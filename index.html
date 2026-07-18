@@ -925,7 +925,7 @@ document.getElementById('setup-connect-btn').addEventListener('click', async () 
   }
 
   // Validate URL format
-  if (!url.startsWith('https://') || !url.includes('firebaseio.com')) {
+  if (!url.startsWith('https://') || (!url.includes('firebaseio.com') && !url.includes('firebasedatabase.app'))) {
     showToast('⚠️ Неверный формат URL', false);
     return;
   }
