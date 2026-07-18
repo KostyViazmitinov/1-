@@ -7,73 +7,117 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg-primary: #0F1D36;
-      --bg-secondary: #172B4D;
-      --bg-tertiary: #203A63;
-      --bg-card: #172B4D;
+      /* Deep Blue Base */
+      --bg-primary: #050B14;
+      --bg-secondary: rgba(10, 20, 40, 0.5);
+      --bg-tertiary: rgba(20, 40, 80, 0.3);
+      --bg-card: rgba(15, 25, 45, 0.4);
+      
       --text-primary: #ffffff;
-      --text-secondary: rgba(255, 255, 255, 0.65);
-      --text-tertiary: rgba(255, 255, 255, 0.4);
-      --accent: #0A84FF;
-      --accent-light: rgba(10, 132, 255, 0.15);
-      --accent-grad: linear-gradient(135deg, #0A84FF, #5E5CE6);
-      --green: #30D158;
-      --green-bg: rgba(48, 209, 88, 0.15);
-      --green-grad: linear-gradient(135deg, #30D158, #32B34A);
-      --yellow: #FFD60A;
-      --yellow-bg: rgba(255, 214, 10, 0.15);
-      --yellow-grad: linear-gradient(135deg, #FFD60A, #FF9F0A);
-      --red: #FF453A;
-      --red-bg: rgba(255, 69, 58, 0.15);
-      --red-grad: linear-gradient(135deg, #FF453A, #FF375F);
-      --orange: #FF9F0A;
-      --orange-bg: rgba(255, 159, 10, 0.15);
-      --purple: #BF5AF2;
-      --purple-bg: rgba(191, 90, 242, 0.15);
-      --purple-grad: linear-gradient(135deg, #BF5AF2, #5E5CE6);
-      --border: rgba(255, 255, 255, 0.06);
-      --shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-      --header-bg: rgba(15, 29, 54, 0.7);
-      --nav-bg: rgba(15, 29, 54, 0.85);
-      --overlay-bg: rgba(0, 0, 0, 0.6);
-      --confirm-bg: rgba(0, 0, 0, 0.7);
-      --radius: 20px;
-      --radius-sm: 14px;
-      --radius-xs: 10px;
-      --nav-height: 82px;
-      --header-height: 56px;
-      --card-blur: blur(20px);
+      --text-secondary: rgba(255, 255, 255, 0.75);
+      --text-tertiary: rgba(255, 255, 255, 0.45);
+      
+      /* Vibrant Accents */
+      --accent: #00F0FF;
+      --accent-light: rgba(0, 240, 255, 0.15);
+      --accent-grad: linear-gradient(135deg, #00F0FF, #0055FF);
+      
+      --green: #00FF88;
+      --green-bg: rgba(0, 255, 136, 0.15);
+      --green-grad: linear-gradient(135deg, #00FF88, #00AA55);
+      
+      --yellow: #FFE600;
+      --yellow-bg: rgba(255, 230, 0, 0.15);
+      --yellow-grad: linear-gradient(135deg, #FFE600, #FF9900);
+      
+      --red: #FF2A55;
+      --red-bg: rgba(255, 42, 85, 0.15);
+      --red-grad: linear-gradient(135deg, #FF2A55, #FF0055);
+      
+      --orange: #FF6600;
+      --orange-bg: rgba(255, 102, 0, 0.15);
+      
+      --purple: #B000FF;
+      --purple-bg: rgba(176, 0, 255, 0.15);
+      --purple-grad: linear-gradient(135deg, #B000FF, #5500FF);
+      
+      /* Glass Borders & Shadows */
+      --border: rgba(255, 255, 255, 0.08);
+      --border-highlight: rgba(255, 255, 255, 0.15);
+      --shadow: 0 16px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+      
+      --header-bg: rgba(5, 11, 20, 0.6);
+      --nav-bg: rgba(5, 11, 20, 0.85);
+      --overlay-bg: rgba(0, 5, 10, 0.8);
+      --confirm-bg: rgba(0, 5, 10, 0.85);
+      
+      --radius: 24px;
+      --radius-sm: 16px;
+      --radius-xs: 12px;
+      --nav-height: 88px;
+      --header-height: 60px;
+      --card-blur: blur(30px);
     }
 
     .theme-light {
-      --bg-primary: #F2F2F7;
-      --bg-secondary: rgba(255, 255, 255, 0.8);
-      --bg-tertiary: #E5E5EA;
-      --bg-card: rgba(255, 255, 255, 0.9);
-      --text-primary: #000000;
-      --text-secondary: #666666;
-      --text-tertiary: #8A8A8E;
-      --border: rgba(0, 0, 0, 0.08);
-      --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-      --header-bg: rgba(242, 242, 247, 0.75);
+      --bg-primary: #EBF2FA;
+      --bg-secondary: rgba(255, 255, 255, 0.6);
+      --bg-tertiary: rgba(255, 255, 255, 0.4);
+      --bg-card: rgba(255, 255, 255, 0.5);
+      
+      --text-primary: #0A1931;
+      --text-secondary: #4A5A7A;
+      --text-tertiary: #8A9AA8;
+      
+      --accent: #0055FF;
+      --accent-light: rgba(0, 85, 255, 0.1);
+      --accent-grad: linear-gradient(135deg, #0055FF, #00F0FF);
+      
+      --border: rgba(255, 255, 255, 0.5);
+      --border-highlight: rgba(255, 255, 255, 0.8);
+      --shadow: 0 16px 40px rgba(0, 10, 40, 0.06), inset 0 1px 0 rgba(255,255,255,0.6);
+      
+      --header-bg: rgba(235, 242, 250, 0.6);
       --nav-bg: rgba(255, 255, 255, 0.85);
-      --overlay-bg: rgba(0, 0, 0, 0.3);
-      --confirm-bg: rgba(0, 0, 0, 0.4);
-      --card-blur: blur(24px);
+      --overlay-bg: rgba(235, 242, 250, 0.8);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg-primary);
+      background: radial-gradient(circle at top left, #0A1931, #02050A 100%);
+      background-attachment: fixed;
       color: var(--text-primary);
       min-height: 100vh;
       overflow-x: hidden;
       padding-bottom: var(--nav-height);
       padding-top: var(--header-height);
+      position: relative;
+    }
+    
+    .theme-light body {
+      background: radial-gradient(circle at top left, #FFFFFF, #EBF2FA 100%);
+    }
+
+    /* Glowing Orbs for true Glassmorphism */
+    .glow-orb {
+      position: fixed; border-radius: 50%; filter: blur(90px); opacity: 0.6; z-index: -1;
+      animation: floatOrb 20s infinite alternate ease-in-out;
+      pointer-events: none;
+    }
+    .glow-orb-1 { top: -100px; left: -100px; width: 300px; height: 300px; background: #0055FF; }
+    .glow-orb-2 { bottom: -50px; right: -50px; width: 400px; height: 400px; background: #B000FF; animation-delay: -5s; }
+    .theme-light .glow-orb-1 { background: #00F0FF; opacity: 0.3; filter: blur(60px); }
+    .theme-light .glow-orb-2 { background: #0055FF; opacity: 0.3; filter: blur(60px); }
+
+    @keyframes floatOrb {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(50px, 100px) scale(1.1); }
+      100% { transform: translate(-50px, -50px) scale(0.9); }
     }
 
     /* === HEADER === */
@@ -211,7 +255,9 @@
     }
     .summary-card::before {
       content: ''; position: absolute; inset: 0; 
-      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+      border-radius: inherit;
+      box-shadow: inset 0 1px 0 var(--border-highlight), inset 0 -1px 0 rgba(0,0,0,0.1);
+      background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
       pointer-events: none;
     }
     .summary-card:active { transform: scale(0.97); }
@@ -267,6 +313,13 @@
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; position: relative;
       animation: cardAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
       backdrop-filter: var(--card-blur); -webkit-backdrop-filter: var(--card-blur);
+    }
+    .data-card::before {
+      content: ''; position: absolute; inset: 0; 
+      border-radius: inherit;
+      box-shadow: inset 0 1px 0 var(--border-highlight), inset 0 -1px 0 rgba(0,0,0,0.1);
+      background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+      pointer-events: none;
     }
     @keyframes cardAppear {
       from { opacity: 0; transform: translateY(16px) scale(0.96); }
@@ -341,11 +394,14 @@
     .modal-overlay.active { display: flex; opacity: 1; }
     .modal-overlay.closing { opacity: 0; }
     .modal-sheet {
-      background: var(--bg-secondary); border-radius: 20px 20px 0 0;
-      width: 100%; max-width: 500px; max-height: 90vh;
+      background: var(--bg-card); border-radius: 32px 32px 0 0;
+      width: 100%; max-width: 500px; max-height: 92vh;
       overflow-y: auto; padding: 0 20px 34px;
       transform: translateY(100%);
       transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+      border-top: 1px solid var(--border-highlight);
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
     }
     .modal-overlay.active .modal-sheet { transform: translateY(0); }
     .modal-overlay.closing .modal-sheet { transform: translateY(100%); transition-duration: 0.25s; }
@@ -531,6 +587,8 @@
   </style>
 </head>
 <body>
+  <div class="glow-orb glow-orb-1"></div>
+  <div class="glow-orb glow-orb-2"></div>
 
   <!-- SETUP SCREEN -->
   <div class="setup-overlay" id="setup-screen">
@@ -1604,14 +1662,29 @@ function renderDashboard() {
       <button class="segment-btn ${filter === 'all' ? 'active' : ''}" onclick="setDashFilter('all')">Всё время</button>
     </div>
 
+    <!-- HERO WIDGET -->
+    <div class="summary-card" style="text-align: center; padding: 32px 16px; margin-bottom: 16px; background: linear-gradient(145deg, var(--bg-card), rgba(0,255,136,0.1)); border: 1px solid rgba(0,255,136,0.3); box-shadow: 0 16px 40px rgba(0,255,136,0.1), inset 0 1px 0 rgba(255,255,255,0.2);">
+      <div class="label" style="justify-content: center; font-size: 14px; color: var(--green); text-shadow: 0 0 10px var(--green);">ЧИСТАЯ ПРИБЫЛЬ</div>
+      <div class="value" style="font-size: 42px; font-weight: 800; letter-spacing: -1.5px; background: var(--green-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${fmtCurrency(netProfit)}</div>
+      <div class="sub" style="opacity: 0.7; margin-top: 8px;">Выручка минус закупка, логистика и расходы</div>
+    </div>
+
     <div class="summary-grid">
-      <div class="summary-card green" style="grid-column: span 2; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px;">
-        <div class="label" style="font-size: 14px; opacity: 0.9;">💵 Чистая прибыль</div>
-        <div class="value" style="font-size: 28px;">${fmtCurrency(netProfit)}</div>
-        <div class="sub" style="opacity: 0.7;">Выручка минус закупка, логистика и расходы</div>
-      </div>
       <div class="summary-card"><div class="label">📈 Выручка</div><div class="value">${fmtCurrency(totalRevenue)}</div><div class="sub">${successfulOut.length} продаж</div></div>
       <div class="summary-card accent"><div class="label">📦 Склад</div><div class="value">${fmtCurrency(totalInvested)}</div><div class="sub">${fmt(totalUnits)} шт</div></div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="data-card" style="margin-bottom: 16px; padding: 20px 16px;">
+      <div class="data-card-title" style="margin-bottom: 16px;">Распределение продаж (Категории)</div>
+      ${Object.keys(catSales).length > 0 
+        ? `<div style="position: relative; height: 180px; width: 100%; display: flex; justify-content: center;"><canvas id="donutChart"></canvas></div>` 
+        : `<div class="empty-state" style="padding:10px 0"><div class="desc">Нет данных для графика</div></div>`}
+    </div>
+
+    <div class="data-card" style="margin-bottom: 24px; padding: 20px 16px;">
+      <div class="data-card-title" style="margin-bottom: 16px;">Доходы vs Расходы</div>
+      <div style="position: relative; height: 200px; width: 100%;"><canvas id="barChart"></canvas></div>
     </div>
     
     <details class="dash-accordion" open>
@@ -1690,6 +1763,90 @@ function renderDashboard() {
   `;
 
   el.innerHTML = html;
+
+  // Initialize Charts
+  if (window.dashCharts) {
+    window.dashCharts.forEach(c => c.destroy());
+  }
+  window.dashCharts = [];
+  
+  const ctxDonut = document.getElementById('donutChart');
+  if (ctxDonut) {
+    const isLight = document.body.parentElement.classList.contains('theme-light');
+    const textColor = isLight ? '#4A5A7A' : 'rgba(255,255,255,0.7)';
+    const donutChart = new Chart(ctxDonut, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(catSales),
+        datasets: [{
+          data: Object.values(catSales),
+          backgroundColor: ['#00F0FF', '#B000FF', '#00FF88', '#FFE600', '#FF2A55'],
+          borderWidth: 0,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '75%',
+        plugins: {
+          legend: { position: 'right', labels: { color: textColor, font: { family: 'Inter', size: 11 } } },
+          tooltip: {
+            backgroundColor: 'rgba(5, 11, 20, 0.9)',
+            titleFont: { family: 'Inter' },
+            bodyFont: { family: 'Inter' },
+            callbacks: { label: (ctx) => ' ' + fmtCurrency(ctx.raw) }
+          }
+        }
+      }
+    });
+    window.dashCharts.push(donutChart);
+  }
+
+  const ctxBar = document.getElementById('barChart');
+  if (ctxBar) {
+    const isLight = document.body.parentElement.classList.contains('theme-light');
+    const textColor = isLight ? '#4A5A7A' : 'rgba(255,255,255,0.5)';
+    const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+    const totalExpensesWithCogs = cogs + totalDeliveryCost + incomingDeliveryCost + totalExpensesAmount;
+    
+    const barChart = new Chart(ctxBar, {
+      type: 'bar',
+      data: {
+        labels: ['Доходы', 'Расходы', 'Прибыль'],
+        datasets: [{
+          data: [totalRevenue, totalExpensesWithCogs, netProfit],
+          backgroundColor: ['#00F0FF', '#FF2A55', '#00FF88'],
+          borderRadius: 8,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(5, 11, 20, 0.9)',
+            titleFont: { family: 'Inter' },
+            bodyFont: { family: 'Inter', size: 14, weight: 'bold' },
+            callbacks: { label: (ctx) => ' ' + fmtCurrency(ctx.raw) }
+          }
+        },
+        scales: {
+          y: { 
+            grid: { color: gridColor }, 
+            ticks: { color: textColor, font: { family: 'Inter', size: 10 }, callback: (value) => fmtCurrency(value).replace(',00 ₴','') } 
+          },
+          x: { 
+            grid: { display: false }, 
+            ticks: { color: textColor, font: { family: 'Inter', size: 11, weight: '600' } } 
+          }
+        }
+      }
+    });
+    window.dashCharts.push(barChart);
+  }
 }
 
 // ============================================================
