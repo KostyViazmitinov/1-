@@ -59,6 +59,7 @@
       padding: 0 16px;
       border-bottom: 1px solid var(--border);
     }
+    .header-left, .header-right { display: flex; align-items: center; gap: 4px; }
     .header-title {
       font-size: 17px; font-weight: 600; letter-spacing: -0.2px;
     }
@@ -70,6 +71,79 @@
     }
     .header-btn:active { background: var(--accent-light); }
     .header-btn.icon { font-size: 20px; }
+
+    /* === SYNC INDICATOR === */
+    .sync-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green); display: inline-block;
+      margin-right: 6px; vertical-align: middle;
+      transition: background 0.3s;
+    }
+    .sync-dot.syncing {
+      background: var(--yellow);
+      animation: pulse 1s infinite;
+    }
+    .sync-dot.error { background: var(--red); }
+    .sync-dot.offline { background: var(--text-tertiary); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* === SETUP SCREEN === */
+    .setup-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: var(--bg-primary);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .setup-overlay.hidden { display: none; }
+    .setup-container {
+      max-width: 420px; width: 100%;
+    }
+    .setup-logo {
+      text-align: center; margin-bottom: 32px;
+    }
+    .setup-logo .icon { font-size: 64px; margin-bottom: 12px; }
+    .setup-logo h1 {
+      font-size: 28px; font-weight: 700; letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .setup-logo p { color: var(--text-secondary); font-size: 14px; margin-top: 6px; }
+    .setup-section {
+      background: var(--bg-secondary); border-radius: var(--radius);
+      padding: 20px; margin-bottom: 16px; border: 1px solid var(--border);
+    }
+    .setup-section h2 {
+      font-size: 15px; font-weight: 600; margin-bottom: 4px;
+    }
+    .setup-section p {
+      font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5;
+    }
+    .setup-step {
+      display: flex; align-items: flex-start; gap: 10px;
+      margin-bottom: 10px; font-size: 13px; color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .setup-step .num {
+      background: var(--accent); color: white; width: 22px; height: 22px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+    }
+    .setup-divider {
+      display: flex; align-items: center; gap: 12px; margin: 20px 0;
+      color: var(--text-tertiary); font-size: 12px; font-weight: 600;
+    }
+    .setup-divider::before, .setup-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .setup-skip {
+      text-align: center; margin-top: 12px;
+    }
+    .setup-skip button {
+      background: none; border: none; color: var(--text-tertiary);
+      font-size: 13px; cursor: pointer; font-family: inherit;
+      text-decoration: underline; padding: 8px;
+    }
 
     /* === BOTTOM NAV === */
     .bottom-nav {
@@ -134,13 +208,6 @@
     }
     .search-input:focus { border-color: var(--accent); }
     .search-input::placeholder { color: var(--text-tertiary); }
-    .filter-btn {
-      background: var(--bg-secondary); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); padding: 10px 14px;
-      color: var(--text-secondary); font-size: 14px; cursor: pointer;
-      font-family: inherit; white-space: nowrap; transition: all 0.2s;
-    }
-    .filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
 
     /* === SEGMENT CONTROL === */
     .segment-control {
@@ -163,7 +230,7 @@
     .data-card {
       background: var(--bg-secondary); border-radius: var(--radius);
       padding: 14px; border: 1px solid var(--border);
-      transition: all 0.2s; cursor: pointer; position: relative;
+      transition: all 0.3s; cursor: pointer; position: relative;
       animation: cardAppear 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
     @keyframes cardAppear {
@@ -172,7 +239,7 @@
     }
     .data-card.highlight {
       border-color: var(--accent) !important;
-      box-shadow: 0 0 16px rgba(10, 132, 255, 0.3);
+      box-shadow: 0 0 20px rgba(10, 132, 255, 0.35);
     }
     .data-card:active { transform: scale(0.98); background: var(--bg-tertiary); }
     .data-card-header {
@@ -281,6 +348,7 @@
     .form-select option { background: var(--bg-tertiary); color: var(--text-primary); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .form-textarea { resize: vertical; min-height: 60px; }
+    .form-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
 
     .btn {
       width: 100%; padding: 14px; border: none; border-radius: var(--radius-sm);
@@ -348,6 +416,7 @@
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
     .toast.toast-delete { background: var(--red); box-shadow: 0 8px 32px rgba(255, 69, 58, 0.4); color: #fff; }
+    .toast.toast-sync { background: var(--accent); box-shadow: 0 8px 32px rgba(10, 132, 255, 0.4); color: #fff; }
 
     /* === FILTER CHIPS === */
     .filter-chips {
@@ -392,7 +461,6 @@
     .mt-16 { margin-top: 16px; }
     .mb-16 { margin-bottom: 16px; }
 
-    /* === SCROLLBAR === */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 2px; }
@@ -400,11 +468,50 @@
 </head>
 <body>
 
+  <!-- SETUP SCREEN -->
+  <div class="setup-overlay" id="setup-screen">
+    <div class="setup-container">
+      <div class="setup-logo">
+        <div class="icon"></div>
+        <h1>Apple Store Manager</h1>
+        <p>Учёт товаров, доставок и расходов</p>
+      </div>
+
+      <div class="setup-section">
+        <h2>🔗 Синхронизация</h2>
+        <p>Чтобы данные синхронизировались между партнёрами, подключите Firebase. Один создаёт проект — второй вводит те же данные.</p>
+
+        <div class="form-group">
+          <label class="form-label">Firebase Database URL</label>
+          <input class="form-input" id="setup-firebase-url" placeholder="https://your-project.firebaseio.com" autocapitalize="off" autocorrect="off">
+          <div class="form-hint">Скопируйте из Firebase Console → Realtime Database</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Код магазина</label>
+          <input class="form-input" id="setup-store-code" placeholder="mystore2024" autocapitalize="off" autocorrect="off">
+          <div class="form-hint">Придумайте общий код — введите одинаковый у обоих</div>
+        </div>
+        <button class="btn btn-primary" id="setup-connect-btn">🔗 Подключить синхронизацию</button>
+      </div>
+
+      <div class="setup-divider">ИЛИ</div>
+
+      <div class="setup-skip">
+        <button id="setup-skip-btn">Работать без синхронизации (локально)</button>
+      </div>
+    </div>
+  </div>
+
   <!-- HEADER -->
   <header class="header">
-    <button class="header-btn icon" id="exportBtn" title="Экспорт">📤</button>
-    <h1 class="header-title"> Apple Store</h1>
-    <button class="header-btn icon" id="importBtn" title="Импорт">📥</button>
+    <div class="header-left">
+      <button class="header-btn icon" id="exportBtn" title="Экспорт">📤</button>
+    </div>
+    <h1 class="header-title"><span class="sync-dot offline" id="syncDot"></span> Apple Store</h1>
+    <div class="header-right">
+      <button class="header-btn icon" id="settingsBtn" title="Настройки">⚙️</button>
+      <button class="header-btn icon" id="importBtn" title="Импорт">📥</button>
+    </div>
   </header>
 
   <!-- TOAST -->
@@ -487,12 +594,11 @@
     </div>
   </div>
 
-  <!-- HIDDEN FILE INPUT FOR IMPORT -->
   <input type="file" id="fileInput" accept=".json" style="display:none">
 
 <script>
 // ============================================================
-// DATA LAYER
+// CONFIG & CONSTANTS
 // ============================================================
 const STORAGE_KEYS = {
   products: 'asm_products',
@@ -508,17 +614,15 @@ const DELIVERY_STATUSES_OUT = ['Отправлено', 'В пути', 'Дост�
 const DELIVERY_TYPES = ['Новая Почта', 'Укрпочта', 'Курьер', 'Личная встреча', 'Meest', 'Другое'];
 
 const EXPENSE_COLORS = {
-  'Реклама': 'var(--accent)',
-  'Объявления': 'var(--purple)',
-  'Упаковка': 'var(--orange)',
-  'Доставка': 'var(--yellow)',
-  'Связь': 'var(--green)',
-  'Аренда': 'var(--red)',
-  'Закупка товара': '#5AC8FA',
-  'Другое': 'var(--text-tertiary)',
+  'Реклама': 'var(--accent)', 'Объявления': 'var(--purple)',
+  'Упаковка': 'var(--orange)', 'Доставка': 'var(--yellow)',
+  'Связь': 'var(--green)', 'Аренда': 'var(--red)',
+  'Закупка товара': '#5AC8FA', 'Другое': 'var(--text-tertiary)',
 };
 
-// Telegram WebApp
+// ============================================================
+// TELEGRAM WEBAPP
+// ============================================================
 const tg = window.Telegram?.WebApp;
 let isTelegram = false;
 
@@ -528,13 +632,10 @@ function initTelegram() {
     tg.expand();
     tg.enableClosingConfirmation();
     isTelegram = true;
-    // Apply Telegram theme
     if (tg.themeParams) {
       const tp = tg.themeParams;
       if (tp.bg_color) document.documentElement.style.setProperty('--bg-primary', tp.bg_color);
-      if (tp.secondary_bg_color) {
-        document.documentElement.style.setProperty('--bg-secondary', tp.secondary_bg_color);
-      }
+      if (tp.secondary_bg_color) document.documentElement.style.setProperty('--bg-secondary', tp.secondary_bg_color);
       if (tp.text_color) document.documentElement.style.setProperty('--text-primary', tp.text_color);
       if (tp.hint_color) document.documentElement.style.setProperty('--text-secondary', tp.hint_color);
       if (tp.button_color) document.documentElement.style.setProperty('--accent', tp.button_color);
@@ -544,52 +645,202 @@ function initTelegram() {
 
 function haptic(type = 'light') {
   if (tg?.HapticFeedback) {
-    tg.HapticFeedback.impactOccurred(type);
+    if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+    else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+    else tg.HapticFeedback.impactOccurred(type);
   }
 }
 
-// Storage
-function loadData(key) {
+// ============================================================
+// FIREBASE SYNC
+// ============================================================
+let firebaseUrl = localStorage.getItem('asm_firebase_url') || '';
+let storeCode = localStorage.getItem('asm_store_code') || '';
+let syncEnabled = !!(firebaseUrl && storeCode);
+let eventSource = null;
+let syncDebounceTimer = null;
+let isSyncing = false;
+let lastRemoteHash = '';
+
+function getFirebasePath() {
+  // Clean the URL and build path
+  let url = firebaseUrl.replace(/\/+$/, '');
+  return `${url}/stores/${storeCode}`;
+}
+
+function setSyncStatus(status) {
+  const dot = document.getElementById('syncDot');
+  dot.className = 'sync-dot ' + status;
+}
+
+async function pushToFirebase() {
+  if (!syncEnabled) return;
+  isSyncing = true;
+  setSyncStatus('syncing');
+
+  const data = {
+    products: state.products,
+    deliveriesIn: state.deliveriesIn,
+    deliveriesOut: state.deliveriesOut,
+    expenses: state.expenses,
+    updatedAt: Date.now(),
+    updatedBy: getUserId(),
+  };
+
   try {
-    return JSON.parse(localStorage.getItem(key)) || [];
-  } catch { return []; }
+    const resp = await fetch(`${getFirebasePath()}/data.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!resp.ok) throw new Error('Firebase PUT failed');
+    lastRemoteHash = JSON.stringify(data);
+    setSyncStatus('');
+  } catch (err) {
+    console.error('Firebase push error:', err);
+    setSyncStatus('error');
+  }
+  isSyncing = false;
 }
 
-function saveData(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
-  // Also try Telegram CloudStorage
-  if (tg?.CloudStorage) {
-    tg.CloudStorage.setItem(key, JSON.stringify(data));
+function debouncedPush() {
+  clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(pushToFirebase, 500);
+}
+
+async function pullFromFirebase() {
+  if (!syncEnabled) return;
+  setSyncStatus('syncing');
+  try {
+    const resp = await fetch(`${getFirebasePath()}/data.json`);
+    if (!resp.ok) throw new Error('Firebase GET failed');
+    const data = await resp.json();
+    if (data) {
+      applyRemoteData(data);
+      lastRemoteHash = JSON.stringify(data);
+    }
+    setSyncStatus('');
+  } catch (err) {
+    console.error('Firebase pull error:', err);
+    setSyncStatus('error');
   }
 }
 
-function loadAllFromCloud(callback) {
-  if (tg?.CloudStorage) {
-    const keys = Object.values(STORAGE_KEYS);
-    tg.CloudStorage.getItems(keys, (err, result) => {
-      if (!err && result) {
-        for (const [key, val] of Object.entries(result)) {
-          if (val) {
-            try {
-              const parsed = JSON.parse(val);
-              if (parsed.length > 0) {
-                const local = loadData(key);
-                if (local.length === 0) {
-                  localStorage.setItem(key, val);
-                }
-              }
-            } catch {}
+function applyRemoteData(data) {
+  let changed = false;
+  if (data.products && JSON.stringify(data.products) !== JSON.stringify(state.products)) {
+    state.products = mergeArrays(state.products, data.products);
+    changed = true;
+  }
+  if (data.deliveriesIn && JSON.stringify(data.deliveriesIn) !== JSON.stringify(state.deliveriesIn)) {
+    state.deliveriesIn = mergeArrays(state.deliveriesIn, data.deliveriesIn);
+    changed = true;
+  }
+  if (data.deliveriesOut && JSON.stringify(data.deliveriesOut) !== JSON.stringify(state.deliveriesOut)) {
+    state.deliveriesOut = mergeArrays(state.deliveriesOut, data.deliveriesOut);
+    changed = true;
+  }
+  if (data.expenses && JSON.stringify(data.expenses) !== JSON.stringify(state.expenses)) {
+    state.expenses = mergeArrays(state.expenses, data.expenses);
+    changed = true;
+  }
+  if (changed) {
+    saveLocal();
+    renderCurrentTab();
+    showToast('🔄 Данные обновлены', false, 'sync');
+  }
+}
+
+function mergeArrays(local, remote) {
+  // Merge by ID - remote wins for same ID, keep items that exist in either
+  const merged = new Map();
+  local.forEach(item => merged.set(item.id, item));
+  remote.forEach(item => merged.set(item.id, item)); // remote overwrites
+  return Array.from(merged.values());
+}
+
+function startRealtimeListener() {
+  if (!syncEnabled || eventSource) return;
+
+  try {
+    eventSource = new EventSource(`${getFirebasePath()}/data.json`);
+
+    eventSource.addEventListener('put', (e) => {
+      if (isSyncing) return;
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.data && payload.path === '/') {
+          const hash = JSON.stringify(payload.data);
+          if (hash !== lastRemoteHash) {
+            lastRemoteHash = hash;
+            applyRemoteData(payload.data);
           }
         }
+      } catch (err) {
+        console.error('SSE parse error:', err);
       }
-      if (callback) callback();
     });
-  } else {
-    if (callback) callback();
+
+    eventSource.addEventListener('patch', (e) => {
+      // On partial update, pull full data
+      pullFromFirebase();
+    });
+
+    eventSource.onerror = () => {
+      setSyncStatus('error');
+      // Reconnect after 5 seconds
+      setTimeout(() => {
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+        startRealtimeListener();
+      }, 5000);
+    };
+
+    eventSource.onopen = () => {
+      setSyncStatus('');
+    };
+  } catch (err) {
+    console.error('SSE setup error:', err);
+    // Fallback to polling
+    setInterval(pullFromFirebase, 15000);
   }
 }
 
-// State
+function getUserId() {
+  if (tg?.initDataUnsafe?.user?.id) return String(tg.initDataUnsafe.user.id);
+  let uid = localStorage.getItem('asm_user_id');
+  if (!uid) {
+    uid = 'user_' + Date.now().toString(36);
+    localStorage.setItem('asm_user_id', uid);
+  }
+  return uid;
+}
+
+// ============================================================
+// LOCAL STORAGE
+// ============================================================
+function loadData(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || []; }
+  catch { return []; }
+}
+
+function saveLocal() {
+  localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(state.products));
+  localStorage.setItem(STORAGE_KEYS.deliveriesIn, JSON.stringify(state.deliveriesIn));
+  localStorage.setItem(STORAGE_KEYS.deliveriesOut, JSON.stringify(state.deliveriesOut));
+  localStorage.setItem(STORAGE_KEYS.expenses, JSON.stringify(state.expenses));
+}
+
+function saveState() {
+  saveLocal();
+  if (syncEnabled) debouncedPush();
+}
+
+// ============================================================
+// STATE
+// ============================================================
 let state = {
   products: [],
   deliveriesIn: [],
@@ -611,38 +862,23 @@ function loadState() {
   state.expenses = loadData(STORAGE_KEYS.expenses);
 }
 
-function saveState() {
-  saveData(STORAGE_KEYS.products, state.products);
-  saveData(STORAGE_KEYS.deliveriesIn, state.deliveriesIn);
-  saveData(STORAGE_KEYS.deliveriesOut, state.deliveriesOut);
-  saveData(STORAGE_KEYS.expenses, state.expenses);
-}
-
 // ============================================================
 // UTILITY
 // ============================================================
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-
-function fmt(n) {
-  return new Intl.NumberFormat('uk-UA').format(Math.round(n));
-}
-
-function fmtCurrency(n) {
-  return fmt(n) + ' ₴';
-}
-
+function fmt(n) { return new Intl.NumberFormat('uk-UA').format(Math.round(n)); }
+function fmtCurrency(n) { return fmt(n) + ' ₴'; }
 function fmtDate(d) {
   if (!d) return '—';
-  const date = new Date(d);
-  return date.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return new Date(d).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
-function showToast(msg, isDelete) {
+function showToast(msg, isDelete, style) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.classList.remove('toast-delete', 'show');
+  t.classList.remove('toast-delete', 'toast-sync', 'show');
   if (isDelete) t.classList.add('toast-delete');
-  // Force reflow so the class re-triggers transition
+  if (style === 'sync') t.classList.add('toast-sync');
   void t.offsetWidth;
   t.classList.add('show');
   clearTimeout(t._timer);
@@ -654,20 +890,95 @@ function getMarginClass(pct) {
   if (pct >= 15) return 'text-yellow';
   return 'text-red';
 }
-
 function getMarginBadge(pct) {
   if (pct >= 30) return 'badge-green';
   if (pct >= 15) return 'badge-yellow';
   return 'badge-red';
 }
-
 function getStatusBadge(status) {
-  const map = {
-    'В пути': 'badge-yellow', 'На таможне': 'badge-orange', 'Доставлено': 'badge-green',
-    'Отправлено': 'badge-accent', 'Получено': 'badge-green',
-  };
+  const map = { 'В пути': 'badge-yellow', 'На таможне': 'badge-orange', 'Доставлено': 'badge-green', 'Отправлено': 'badge-accent', 'Получено': 'badge-green' };
   return map[status] || 'badge-accent';
 }
+
+// ============================================================
+// SETUP SCREEN
+// ============================================================
+function showSetupScreen() {
+  const el = document.getElementById('setup-screen');
+  el.classList.remove('hidden');
+  // Pre-fill if exists
+  document.getElementById('setup-firebase-url').value = firebaseUrl;
+  document.getElementById('setup-store-code').value = storeCode;
+}
+
+function hideSetupScreen() {
+  document.getElementById('setup-screen').classList.add('hidden');
+}
+
+document.getElementById('setup-connect-btn').addEventListener('click', async () => {
+  const url = document.getElementById('setup-firebase-url').value.trim();
+  const code = document.getElementById('setup-store-code').value.trim();
+
+  if (!url || !code) {
+    showToast('⚠️ Заполните оба поля', false);
+    return;
+  }
+
+  // Validate URL format
+  if (!url.startsWith('https://') || !url.includes('firebaseio.com')) {
+    showToast('⚠️ Неверный формат URL', false);
+    return;
+  }
+
+  // Test connection
+  const btn = document.getElementById('setup-connect-btn');
+  btn.textContent = '⏳ Подключение...';
+  btn.disabled = true;
+
+  try {
+    const testUrl = `${url.replace(/\/+$/, '')}/stores/${code}/data.json`;
+    const resp = await fetch(testUrl);
+    if (!resp.ok) throw new Error('Connection failed');
+
+    // Save config
+    firebaseUrl = url.replace(/\/+$/, '');
+    storeCode = code;
+    localStorage.setItem('asm_firebase_url', firebaseUrl);
+    localStorage.setItem('asm_store_code', storeCode);
+    syncEnabled = true;
+
+    // Pull existing data
+    const data = await resp.json();
+    if (data) {
+      applyRemoteData(data);
+    } else {
+      // First connection — push current local data
+      await pushToFirebase();
+    }
+
+    startRealtimeListener();
+    hideSetupScreen();
+    showToast('🔗 Синхронизация подключена!', false, 'sync');
+    haptic('success');
+  } catch (err) {
+    showToast('❌ Не удалось подключиться', true);
+    haptic('error');
+  }
+
+  btn.textContent = '🔗 Подключить синхронизацию';
+  btn.disabled = false;
+});
+
+document.getElementById('setup-skip-btn').addEventListener('click', () => {
+  localStorage.setItem('asm_setup_done', '1');
+  hideSetupScreen();
+  setSyncStatus('offline');
+});
+
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  showSetupScreen();
+  haptic('light');
+});
 
 // ============================================================
 // NAVIGATION
@@ -676,9 +987,8 @@ function switchTab(tab) {
   state.currentTab = tab;
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.tab === tab);
-  });
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  document.getElementById('fab').style.display = tab === 'dashboard' ? 'none' : 'flex';
   haptic('light');
   renderCurrentTab();
 }
@@ -687,7 +997,6 @@ document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
-// Segment control
 document.querySelectorAll('.segment-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     state.deliverySegment = btn.dataset.segment;
@@ -711,7 +1020,6 @@ function renderCurrentTab() {
 // PRODUCTS
 // ============================================================
 function renderProducts() {
-  // Summary
   const total = state.products.reduce((acc, p) => {
     const qty = p.quantity || 0;
     acc.invested += p.buyPrice * qty;
@@ -739,10 +1047,8 @@ function renderProducts() {
     <div class="summary-card">
       <div class="label">📦 На складе</div>
       <div class="value">${fmt(total.units)} шт</div>
-    </div>
-  `;
+    </div>`;
 
-  // Filters
   const filtersEl = document.getElementById('product-filters');
   filtersEl.innerHTML = CATEGORIES.map(cat =>
     `<button class="chip ${state.productFilter === cat ? 'active' : ''}" data-filter="${cat}">${cat}</button>`
@@ -755,11 +1061,8 @@ function renderProducts() {
     });
   });
 
-  // List
   let filtered = [...state.products];
-  if (state.productFilter !== 'Все') {
-    filtered = filtered.filter(p => p.category === state.productFilter);
-  }
+  if (state.productFilter !== 'Все') filtered = filtered.filter(p => p.category === state.productFilter);
   if (state.searchQuery) {
     const q = state.searchQuery.toLowerCase();
     filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
@@ -767,41 +1070,32 @@ function renderProducts() {
 
   const listEl = document.getElementById('products-list');
   if (filtered.length === 0) {
-    listEl.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">📦</div>
-        <div class="title">Товаров пока нет</div>
-        <div class="desc">Нажмите + чтобы добавить первый товар</div>
-      </div>`;
+    listEl.innerHTML = `<div class="empty-state"><div class="icon">📦</div><div class="title">Товаров пока нет</div><div class="desc">Нажмите + чтобы добавить первый товар</div></div>`;
     return;
   }
 
-  listEl.innerHTML = filtered.map(p => {
+  listEl.innerHTML = filtered.map((p, i) => {
     const margin = p.buyPrice > 0 ? ((p.sellPrice - p.buyPrice) / p.buyPrice * 100) : 0;
     const marginAbs = p.sellPrice - p.buyPrice;
     const totalProfit = marginAbs * (p.quantity || 0);
     return `
-      <div class="data-card" data-id="${p.id}" data-type="product">
+      <div class="data-card" data-id="${p.id}" data-type="product" style="animation-delay:${i * 0.04}s">
         <div class="data-card-header">
           <div class="data-card-title">${p.name}</div>
           <span class="data-card-badge ${getMarginBadge(margin)}">${margin.toFixed(0)}%</span>
         </div>
         <div class="data-card-category">${p.category}</div>
         <div class="data-card-row mt-8">
-          <span class="label">Закупка</span>
-          <span class="value">${fmtCurrency(p.buyPrice)}</span>
+          <span class="label">Закупка</span><span class="value">${fmtCurrency(p.buyPrice)}</span>
         </div>
         <div class="data-card-row">
-          <span class="label">Продажа</span>
-          <span class="value">${fmtCurrency(p.sellPrice)}</span>
+          <span class="label">Продажа</span><span class="value">${fmtCurrency(p.sellPrice)}</span>
         </div>
         <div class="data-card-row">
-          <span class="label">Маржа</span>
-          <span class="value ${getMarginClass(margin)}">${fmtCurrency(marginAbs)}</span>
+          <span class="label">Маржа</span><span class="value ${getMarginClass(margin)}">${fmtCurrency(marginAbs)}</span>
         </div>
         <div class="data-card-row">
-          <span class="label">На складе</span>
-          <span class="value">${p.quantity || 0} шт</span>
+          <span class="label">На складе</span><span class="value">${p.quantity || 0} шт</span>
         </div>
         <div class="data-card-footer">
           <span class="label">Потенц. прибыль</span>
@@ -810,11 +1104,9 @@ function renderProducts() {
       </div>`;
   }).join('');
 
-  // Card clicks
   listEl.querySelectorAll('.data-card').forEach(card => {
     card.addEventListener('click', () => {
-      const id = card.dataset.id;
-      const item = state.products.find(p => p.id === id);
+      const item = state.products.find(p => p.id === card.dataset.id);
       if (item) openEditModal('product', item);
     });
   });
@@ -827,7 +1119,6 @@ function renderDeliveries() {
   const isIncoming = state.deliverySegment === 'incoming';
   const items = isIncoming ? state.deliveriesIn : state.deliveriesOut;
 
-  // Summary
   const inTransit = state.deliveriesIn.filter(d => d.status !== 'Доставлено').length;
   const shipped = state.deliveriesOut.filter(d => d.status !== 'Получено').length;
   const totalInValue = state.deliveriesIn.reduce((s, d) => s + (d.cost || 0), 0);
@@ -843,87 +1134,51 @@ function renderDeliveries() {
       <div class="label">🚀 Отправлено</div>
       <div class="value">${shipped}</div>
       <div class="sub">${fmtCurrency(totalOutRevenue)}</div>
-    </div>
-  `;
+    </div>`;
 
   const listEl = document.getElementById('deliveries-list');
   if (items.length === 0) {
-    listEl.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">${isIncoming ? '📦' : '🚀'}</div>
-        <div class="title">${isIncoming ? 'Нет входящих доставок' : 'Нет исходящих доставок'}</div>
-        <div class="desc">Нажмите + чтобы добавить</div>
-      </div>`;
+    listEl.innerHTML = `<div class="empty-state"><div class="icon">${isIncoming ? '📦' : '🚀'}</div><div class="title">${isIncoming ? 'Нет входящих доставок' : 'Нет исходящих доставок'}</div><div class="desc">Нажмите + чтобы добавить</div></div>`;
     return;
   }
 
   if (isIncoming) {
-    listEl.innerHTML = items.map(d => `
-      <div class="data-card" data-id="${d.id}" data-type="deliveryIn">
+    listEl.innerHTML = items.map((d, i) => `
+      <div class="data-card" data-id="${d.id}" data-type="deliveryIn" style="animation-delay:${i * 0.04}s">
         <div class="data-card-header">
           <div class="data-card-title">${d.item}</div>
           <span class="data-card-badge ${getStatusBadge(d.status)}">${d.status}</span>
         </div>
-        <div class="data-card-row">
-          <span class="label">Количество</span>
-          <span class="value">${d.quantity || 1} шт</span>
-        </div>
-        <div class="data-card-row">
-          <span class="label">Поставщик</span>
-          <span class="value">${d.supplier || '—'}</span>
-        </div>
-        <div class="data-card-row">
-          <span class="label">Ожидаемая дата</span>
-          <span class="value">${fmtDate(d.expectedDate)}</span>
-        </div>
-        <div class="data-card-row">
-          <span class="label">Стоимость</span>
-          <span class="value">${fmtCurrency(d.cost || 0)}</span>
-        </div>
+        <div class="data-card-row"><span class="label">Кол-во</span><span class="value">${d.quantity || 1} шт</span></div>
+        <div class="data-card-row"><span class="label">Поставщик</span><span class="value">${d.supplier || '—'}</span></div>
+        <div class="data-card-row"><span class="label">Ожидаемая дата</span><span class="value">${fmtDate(d.expectedDate)}</span></div>
+        <div class="data-card-row"><span class="label">Стоимость</span><span class="value">${fmtCurrency(d.cost || 0)}</span></div>
         ${d.trackNumber ? `<div class="data-card-row"><span class="label">Трек</span><span class="value" style="font-size:12px">${d.trackNumber}</span></div>` : ''}
-      </div>
-    `).join('');
+      </div>`).join('');
   } else {
-    listEl.innerHTML = items.map(d => `
-      <div class="data-card" data-id="${d.id}" data-type="deliveryOut">
+    listEl.innerHTML = items.map((d, i) => `
+      <div class="data-card" data-id="${d.id}" data-type="deliveryOut" style="animation-delay:${i * 0.04}s">
         <div class="data-card-header">
           <div class="data-card-title">${d.item}</div>
           <span class="data-card-badge ${getStatusBadge(d.status)}">${d.status}</span>
         </div>
-        <div class="data-card-row">
-          <span class="label">Клиент</span>
-          <span class="value">${d.client || '—'}</span>
-        </div>
-        <div class="data-card-row">
-          <span class="label">Способ</span>
-          <span class="value">${d.type || '—'}</span>
-        </div>
-        <div class="data-card-row">
-          <span class="label">Дата</span>
-          <span class="value">${fmtDate(d.date)}</span>
-        </div>
-        <div class="data-card-row">
-          <span class="label">Кол-во</span>
-          <span class="value">${d.quantity || 1} шт</span>
-        </div>
-        <div class="data-card-row">
-          <span class="label">Доставка</span>
-          <span class="value">${fmtCurrency(d.deliveryCost || 0)}</span>
-        </div>
+        <div class="data-card-row"><span class="label">Клиент</span><span class="value">${d.client || '—'}</span></div>
+        <div class="data-card-row"><span class="label">Способ</span><span class="value">${d.type || '—'}</span></div>
+        <div class="data-card-row"><span class="label">Дата</span><span class="value">${fmtDate(d.date)}</span></div>
+        <div class="data-card-row"><span class="label">Кол-во</span><span class="value">${d.quantity || 1} шт</span></div>
+        <div class="data-card-row"><span class="label">Доставка</span><span class="value">${fmtCurrency(d.deliveryCost || 0)}</span></div>
         <div class="data-card-footer">
           <span class="label">Продажа</span>
           <span class="profit text-green">${fmtCurrency(d.sellPrice || 0)}</span>
         </div>
-      </div>
-    `).join('');
+      </div>`).join('');
   }
 
   listEl.querySelectorAll('.data-card').forEach(card => {
     card.addEventListener('click', () => {
-      const id = card.dataset.id;
       const type = card.dataset.type;
       const arr = type === 'deliveryIn' ? state.deliveriesIn : state.deliveriesOut;
-      const item = arr.find(d => d.id === id);
+      const item = arr.find(d => d.id === card.dataset.id);
       if (item) openEditModal(type, item);
     });
   });
@@ -958,10 +1213,8 @@ function renderExpenses() {
       <div class="label">📅 Прошлый месяц</div>
       <div class="value">${fmtCurrency(lastTotal)}</div>
       <div class="sub">${diff !== 0 ? (diff > 0 ? '↑' : '↓') + ' ' + Math.abs(diff).toFixed(0) + '%' : '—'}</div>
-    </div>
-  `;
+    </div>`;
 
-  // Filters
   const filtersEl = document.getElementById('expense-filters');
   filtersEl.innerHTML = EXPENSE_CATEGORIES.map(cat =>
     `<button class="chip ${state.expenseFilter === cat ? 'active' : ''}" data-filter="${cat}">${cat}</button>`
@@ -974,23 +1227,15 @@ function renderExpenses() {
     });
   });
 
-  // List
   let filtered = [...state.expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
-  if (state.expenseFilter !== 'Все') {
-    filtered = filtered.filter(e => e.category === state.expenseFilter);
-  }
+  if (state.expenseFilter !== 'Все') filtered = filtered.filter(e => e.category === state.expenseFilter);
 
   const listEl = document.getElementById('expenses-list');
   if (filtered.length === 0) {
-    listEl.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">💸</div>
-        <div class="title">Расходов пока нет</div>
-        <div class="desc">Нажмите + чтобы добавить расход</div>
-      </div>`;
+    listEl.innerHTML = `<div class="empty-state"><div class="icon">💸</div><div class="title">Расходов пока нет</div><div class="desc">Нажмите + чтобы добавить расход</div></div>`;
   } else {
-    listEl.innerHTML = filtered.map(e => `
-      <div class="data-card" data-id="${e.id}" data-type="expense">
+    listEl.innerHTML = filtered.map((e, i) => `
+      <div class="data-card" data-id="${e.id}" data-type="expense" style="animation-delay:${i * 0.04}s">
         <div class="data-card-header">
           <div class="data-card-title">${e.description || e.category}</div>
           <span class="data-card-badge badge-red">${fmtCurrency(e.amount)}</span>
@@ -999,14 +1244,12 @@ function renderExpenses() {
           <span class="label">${e.category}</span>
           <span class="value text-secondary">${fmtDate(e.date)}</span>
         </div>
-      </div>
-    `).join('');
+      </div>`).join('');
   }
 
   listEl.querySelectorAll('.data-card').forEach(card => {
     card.addEventListener('click', () => {
-      const id = card.dataset.id;
-      const item = state.expenses.find(e => e.id === id);
+      const item = state.expenses.find(e => e.id === card.dataset.id);
       if (item) openEditModal('expense', item);
     });
   });
@@ -1022,19 +1265,15 @@ function renderExpenses() {
 
   if (Object.keys(byCategory).length > 0) {
     barsEl.innerHTML = '<div class="dash-section-title mt-16">Расходы по категориям (этот месяц)</div>' +
-      Object.entries(byCategory)
-        .sort((a, b) => b[1] - a[1])
-        .map(([cat, amt]) => `
-          <div class="expense-bar-item">
-            <div class="expense-bar-header">
-              <span class="cat">${cat}</span>
-              <span class="amount">${fmtCurrency(amt)}</span>
-            </div>
-            <div class="expense-bar-track">
-              <div class="expense-bar-fill" style="width:${(amt / maxCat * 100).toFixed(1)}%;background:${EXPENSE_COLORS[cat] || 'var(--accent)'}"></div>
-            </div>
+      Object.entries(byCategory).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => `
+        <div class="expense-bar-item">
+          <div class="expense-bar-header">
+            <span class="cat">${cat}</span><span class="amount">${fmtCurrency(amt)}</span>
           </div>
-        `).join('');
+          <div class="expense-bar-track">
+            <div class="expense-bar-fill" style="width:${(amt / maxCat * 100).toFixed(1)}%;background:${EXPENSE_COLORS[cat] || 'var(--accent)'}"></div>
+          </div>
+        </div>`).join('');
   } else {
     barsEl.innerHTML = '';
   }
@@ -1047,149 +1286,62 @@ function renderDashboard() {
   const el = document.getElementById('dashboard-content');
   const now = new Date();
 
-  // Finance
   const totalInvested = state.products.reduce((s, p) => s + p.buyPrice * (p.quantity || 0), 0);
   const totalSell = state.products.reduce((s, p) => s + p.sellPrice * (p.quantity || 0), 0);
   const totalProfit = totalSell - totalInvested;
   const totalUnits = state.products.reduce((s, p) => s + (p.quantity || 0), 0);
 
-  // Expenses this month
   const thisMonthExpenses = state.expenses.filter(e => {
     const d = new Date(e.date);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
   const totalExpenses = thisMonthExpenses.reduce((s, e) => s + (e.amount || 0), 0);
 
-  // Deliveries
   const inTransit = state.deliveriesIn.filter(d => d.status !== 'Доставлено').length;
   const outPending = state.deliveriesOut.filter(d => d.status !== 'Получено').length;
 
-  // Top products by margin
-  const topProducts = [...state.products]
-    .filter(p => p.buyPrice > 0)
+  const topProducts = [...state.products].filter(p => p.buyPrice > 0)
     .map(p => ({ ...p, marginPct: ((p.sellPrice - p.buyPrice) / p.buyPrice * 100) }))
-    .sort((a, b) => b.marginPct - a.marginPct)
-    .slice(0, 5);
+    .sort((a, b) => b.marginPct - a.marginPct).slice(0, 5);
 
-  // Zero stock
   const zeroStock = state.products.filter(p => (p.quantity || 0) === 0);
-
-  // Revenue from outgoing
   const totalRevenue = state.deliveriesOut.reduce((s, d) => s + (d.sellPrice || 0), 0);
 
   let html = `
     <div class="summary-grid">
-      <div class="summary-card accent">
-        <div class="label">💰 Вложено</div>
-        <div class="value">${fmtCurrency(totalInvested)}</div>
-      </div>
-      <div class="summary-card">
-        <div class="label">📈 На продажу</div>
-        <div class="value">${fmtCurrency(totalSell)}</div>
-      </div>
-      <div class="summary-card green">
-        <div class="label">🎯 Потенц. прибыль</div>
-        <div class="value">${fmtCurrency(totalProfit)}</div>
-      </div>
-      <div class="summary-card">
-        <div class="label">💵 Реализовано</div>
-        <div class="value">${fmtCurrency(totalRevenue)}</div>
-      </div>
+      <div class="summary-card accent"><div class="label">💰 Вложено</div><div class="value">${fmtCurrency(totalInvested)}</div></div>
+      <div class="summary-card"><div class="label">📈 На продажу</div><div class="value">${fmtCurrency(totalSell)}</div></div>
+      <div class="summary-card green"><div class="label">🎯 Потенц. прибыль</div><div class="value">${fmtCurrency(totalProfit)}</div></div>
+      <div class="summary-card"><div class="label">💵 Реализовано</div><div class="value">${fmtCurrency(totalRevenue)}</div></div>
     </div>
-
     <div class="dash-section">
       <div class="dash-section-title">📊 Обзор</div>
-      <div class="dash-item">
-        <div class="left">
-          <div class="icon-circle" style="background:var(--accent-light)">📦</div>
-          <div>
-            <div class="name">Товары на складе</div>
-            <div class="detail">${state.products.length} позиций</div>
-          </div>
-        </div>
-        <div class="right">
-          <div class="amount">${fmt(totalUnits)} шт</div>
-        </div>
-      </div>
-      <div class="dash-item">
-        <div class="left">
-          <div class="icon-circle" style="background:var(--yellow-bg)">🚚</div>
-          <div>
-            <div class="name">В пути к нам</div>
-            <div class="detail">Входящие доставки</div>
-          </div>
-        </div>
-        <div class="right">
-          <div class="amount">${inTransit}</div>
-        </div>
-      </div>
-      <div class="dash-item">
-        <div class="left">
-          <div class="icon-circle" style="background:var(--green-bg)">🚀</div>
-          <div>
-            <div class="name">Отправлено</div>
-            <div class="detail">Исходящие доставки</div>
-          </div>
-        </div>
-        <div class="right">
-          <div class="amount">${outPending}</div>
-        </div>
-      </div>
-      <div class="dash-item">
-        <div class="left">
-          <div class="icon-circle" style="background:var(--red-bg)">💸</div>
-          <div>
-            <div class="name">Расходы (этот месяц)</div>
-            <div class="detail">${thisMonthExpenses.length} записей</div>
-          </div>
-        </div>
-        <div class="right">
-          <div class="amount text-red">${fmtCurrency(totalExpenses)}</div>
-        </div>
-      </div>
-    </div>
-  `;
+      <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--accent-light)">📦</div><div><div class="name">Товары на складе</div><div class="detail">${state.products.length} позиций</div></div></div><div class="right"><div class="amount">${fmt(totalUnits)} шт</div></div></div>
+      <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--yellow-bg)">🚚</div><div><div class="name">В пути к нам</div><div class="detail">Входящие доставки</div></div></div><div class="right"><div class="amount">${inTransit}</div></div></div>
+      <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--green-bg)">🚀</div><div><div class="name">Отправлено</div><div class="detail">Исходящие доставки</div></div></div><div class="right"><div class="amount">${outPending}</div></div></div>
+      <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">💸</div><div><div class="name">Расходы (месяц)</div><div class="detail">${thisMonthExpenses.length} записей</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(totalExpenses)}</div></div></div>
+    </div>`;
 
   if (topProducts.length > 0) {
     html += `<div class="dash-section"><div class="dash-section-title">🏆 Топ по маржинальности</div>`;
     topProducts.forEach((p, i) => {
-      html += `
-        <div class="dash-item">
-          <div class="left">
-            <div class="icon-circle" style="background:var(--bg-tertiary);font-size:14px;font-weight:700">${i + 1}</div>
-            <div>
-              <div class="name">${p.name}</div>
-              <div class="detail">${p.category} · ${p.quantity || 0} шт</div>
-            </div>
-          </div>
-          <div class="right">
-            <div class="amount ${getMarginClass(p.marginPct)}">${p.marginPct.toFixed(0)}%</div>
-            <div class="sub">${fmtCurrency(p.sellPrice - p.buyPrice)}/шт</div>
-          </div>
-        </div>`;
+      html += `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--bg-tertiary);font-size:14px;font-weight:700">${i + 1}</div><div><div class="name">${p.name}</div><div class="detail">${p.category} · ${p.quantity || 0} шт</div></div></div><div class="right"><div class="amount ${getMarginClass(p.marginPct)}">${p.marginPct.toFixed(0)}%</div><div class="sub">${fmtCurrency(p.sellPrice - p.buyPrice)}/шт</div></div></div>`;
     });
     html += `</div>`;
   }
 
   if (zeroStock.length > 0) {
-    html += `<div class="dash-section"><div class="dash-section-title">⚠️ Нулевой остаток — пора заказывать</div>`;
+    html += `<div class="dash-section"><div class="dash-section-title">⚠️ Пора заказывать</div>`;
     zeroStock.forEach(p => {
-      html += `
-        <div class="dash-item">
-          <div class="left">
-            <div class="icon-circle" style="background:var(--red-bg)">⚠️</div>
-            <div>
-              <div class="name">${p.name}</div>
-              <div class="detail">${p.category}</div>
-            </div>
-          </div>
-          <div class="right">
-            <div class="amount text-red">0 шт</div>
-          </div>
-        </div>`;
+      html += `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">⚠️</div><div><div class="name">${p.name}</div><div class="detail">${p.category}</div></div></div><div class="right"><div class="amount text-red">0 шт</div></div></div>`;
     });
     html += `</div>`;
   }
+
+  // Sync status section
+  html += `<div class="dash-section"><div class="dash-section-title">⚙️ Синхронизация</div>
+    <div class="dash-item"><div class="left"><div class="icon-circle" style="background:${syncEnabled ? 'var(--green-bg)' : 'var(--bg-tertiary)'}">🔗</div><div><div class="name">${syncEnabled ? 'Подключена' : 'Не подключена'}</div><div class="detail">${syncEnabled ? 'Код: ' + storeCode : 'Нажмите ⚙️ в шапке'}</div></div></div><div class="right"><div class="amount" style="font-size:13px">${syncEnabled ? '✅' : '—'}</div></div></div>
+  </div>`;
 
   el.innerHTML = html;
 }
@@ -1200,7 +1352,6 @@ function renderDashboard() {
 function openModal() {
   const modal = document.getElementById('modal');
   modal.style.display = 'flex';
-  // Force reflow before adding active class so transition plays
   void modal.offsetWidth;
   modal.classList.add('active');
   modal.classList.remove('closing');
@@ -1229,14 +1380,7 @@ function openAddModal() {
   const type = getAddTypeForTab();
   state.editingItem = null;
   state.editingType = type;
-
-  const title = {
-    product: 'Добавить товар',
-    deliveryIn: 'Входящая доставка',
-    deliveryOut: 'Исходящая доставка',
-    expense: 'Добавить расход',
-  }[type];
-
+  const title = { product: 'Добавить товар', deliveryIn: 'Входящая доставка', deliveryOut: 'Исходящая доставка', expense: 'Добавить расход' }[type];
   document.getElementById('modal-title').textContent = title;
   document.getElementById('modal-form').innerHTML = getFormHTML(type, null);
   openModal();
@@ -1246,14 +1390,7 @@ function openAddModal() {
 function openEditModal(type, item) {
   state.editingItem = item;
   state.editingType = type;
-
-  const title = {
-    product: 'Редактировать товар',
-    deliveryIn: 'Входящая доставка',
-    deliveryOut: 'Исходящая доставка',
-    expense: 'Редактировать расход',
-  }[type];
-
+  const title = { product: 'Редактировать товар', deliveryIn: 'Входящая доставка', deliveryOut: 'Исходящая доставка', expense: 'Редактировать расход' }[type];
   document.getElementById('modal-title').textContent = title;
   document.getElementById('modal-form').innerHTML = getFormHTML(type, item);
   openModal();
@@ -1276,166 +1413,100 @@ function getFormHTML(type, item) {
   switch (type) {
     case 'product':
       return `
-        <div class="form-group">
-          <label class="form-label">Наименование</label>
-          <input class="form-input" name="name" value="${v.name || ''}" placeholder="Чехол iPhone 15 Pro Max" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Категория</label>
-          <select class="form-select" name="category">
-            ${CATEGORIES.filter(c => c !== 'Все').map(c => `<option value="${c}" ${v.category === c ? 'selected' : ''}>${c}</option>`).join('')}
-          </select>
-        </div>
+        <div class="form-group"><label class="form-label">Наименование</label>
+          <input class="form-input" name="name" value="${v.name || ''}" placeholder="Чехол iPhone 15 Pro Max" required></div>
+        <div class="form-group"><label class="form-label">Категория</label>
+          <select class="form-select" name="category">${CATEGORIES.filter(c => c !== 'Все').map(c => `<option value="${c}" ${v.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
         <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Цена закупки ₴</label>
-            <input class="form-input" name="buyPrice" type="number" step="0.01" value="${v.buyPrice || ''}" placeholder="0" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Цена продажи ₴</label>
-            <input class="form-input" name="sellPrice" type="number" step="0.01" value="${v.sellPrice || ''}" placeholder="0" required>
-          </div>
+          <div class="form-group"><label class="form-label">Цена закупки ₴</label>
+            <input class="form-input" name="buyPrice" type="number" step="0.01" value="${v.buyPrice || ''}" placeholder="0" required></div>
+          <div class="form-group"><label class="form-label">Цена продажи ₴</label>
+            <input class="form-input" name="sellPrice" type="number" step="0.01" value="${v.sellPrice || ''}" placeholder="0" required></div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Количество</label>
-          <input class="form-input" name="quantity" type="number" value="${v.quantity || 0}" placeholder="0" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Примечание</label>
-          <input class="form-input" name="note" value="${v.note || ''}" placeholder="Необязательно">
-        </div>
+        <div class="form-group"><label class="form-label">Количество</label>
+          <input class="form-input" name="quantity" type="number" value="${v.quantity || 0}" placeholder="0" required></div>
+        <div class="form-group"><label class="form-label">Примечание</label>
+          <input class="form-input" name="note" value="${v.note || ''}" placeholder="Необязательно"></div>
         <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
-        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}
-      `;
+        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
 
     case 'deliveryIn':
       return `
-        <div class="form-group">
-          <label class="form-label">Что едет</label>
-          <input class="form-input" name="item" value="${v.item || ''}" placeholder="Название товара" required>
-        </div>
+        <div class="form-group"><label class="form-label">Что едет</label>
+          <input class="form-input" name="item" value="${v.item || ''}" placeholder="Название товара" required></div>
         <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Количество</label>
-            <input class="form-input" name="quantity" type="number" value="${v.quantity || 1}" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Стоимость ₴</label>
-            <input class="form-input" name="cost" type="number" step="0.01" value="${v.cost || ''}" placeholder="0">
-          </div>
+          <div class="form-group"><label class="form-label">Количество</label>
+            <input class="form-input" name="quantity" type="number" value="${v.quantity || 1}" required></div>
+          <div class="form-group"><label class="form-label">Стоимость ₴</label>
+            <input class="form-input" name="cost" type="number" step="0.01" value="${v.cost || ''}" placeholder="0"></div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Поставщик</label>
-          <input class="form-input" name="supplier" value="${v.supplier || ''}" placeholder="AliExpress, поставщик...">
-        </div>
+        <div class="form-group"><label class="form-label">Поставщик</label>
+          <input class="form-input" name="supplier" value="${v.supplier || ''}" placeholder="AliExpress, поставщик..."></div>
         <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Ожидаемая дата</label>
-            <input class="form-input" name="expectedDate" type="date" value="${v.expectedDate || ''}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Статус</label>
-            <select class="form-select" name="status">
-              ${DELIVERY_STATUSES_IN.map(s => `<option value="${s}" ${v.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-            </select>
-          </div>
+          <div class="form-group"><label class="form-label">Ожидаемая дата</label>
+            <input class="form-input" name="expectedDate" type="date" value="${v.expectedDate || ''}"></div>
+          <div class="form-group"><label class="form-label">Статус</label>
+            <select class="form-select" name="status">${DELIVERY_STATUSES_IN.map(s => `<option value="${s}" ${v.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Трек-номер</label>
-          <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно">
-        </div>
+        <div class="form-group"><label class="form-label">Трек-номер</label>
+          <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно"></div>
         <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
-        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}
-      `;
+        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
 
     case 'deliveryOut':
       return `
-        <div class="form-group">
-          <label class="form-label">Товар</label>
-          <input class="form-input" name="item" value="${v.item || ''}" placeholder="Что отправляем" required>
+        <div class="form-group"><label class="form-label">Товар</label>
+          <input class="form-input" name="item" value="${v.item || ''}" placeholder="Что отправляем" required></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Количество</label>
+            <input class="form-input" name="quantity" type="number" value="${v.quantity || 1}" required></div>
+          <div class="form-group"><label class="form-label">Цена продажи ₴</label>
+            <input class="form-input" name="sellPrice" type="number" step="0.01" value="${v.sellPrice || ''}" placeholder="0"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Клиент</label>
+          <input class="form-input" name="client" value="${v.client || ''}" placeholder="Имя или ник"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Способ</label>
+            <select class="form-select" name="type">${DELIVERY_TYPES.map(t => `<option value="${t}" ${v.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+          <div class="form-group"><label class="form-label">Стоим. доставки ₴</label>
+            <input class="form-input" name="deliveryCost" type="number" step="0.01" value="${v.deliveryCost || 0}"></div>
         </div>
         <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Количество</label>
-            <input class="form-input" name="quantity" type="number" value="${v.quantity || 1}" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Цена продажи ₴</label>
-            <input class="form-input" name="sellPrice" type="number" step="0.01" value="${v.sellPrice || ''}" placeholder="0">
-          </div>
+          <div class="form-group"><label class="form-label">Дата</label>
+            <input class="form-input" name="date" type="date" value="${v.date || today}"></div>
+          <div class="form-group"><label class="form-label">Статус</label>
+            <select class="form-select" name="status">${DELIVERY_STATUSES_OUT.map(s => `<option value="${s}" ${v.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Клиент</label>
-          <input class="form-input" name="client" value="${v.client || ''}" placeholder="Имя или ник">
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Способ</label>
-            <select class="form-select" name="type">
-              ${DELIVERY_TYPES.map(t => `<option value="${t}" ${v.type === t ? 'selected' : ''}>${t}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Стоим. доставки ₴</label>
-            <input class="form-input" name="deliveryCost" type="number" step="0.01" value="${v.deliveryCost || 0}">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Дата</label>
-            <input class="form-input" name="date" type="date" value="${v.date || today}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Статус</label>
-            <select class="form-select" name="status">
-              ${DELIVERY_STATUSES_OUT.map(s => `<option value="${s}" ${v.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Трек-номер</label>
-          <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно">
-        </div>
+        <div class="form-group"><label class="form-label">Трек-номер</label>
+          <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно"></div>
         <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
-        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}
-      `;
+        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
 
     case 'expense':
       return `
-        <div class="form-group">
-          <label class="form-label">Дата</label>
-          <input class="form-input" name="date" type="date" value="${v.date || today}" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Категория</label>
-          <select class="form-select" name="category">
-            ${EXPENSE_CATEGORIES.filter(c => c !== 'Все').map(c => `<option value="${c}" ${v.category === c ? 'selected' : ''}>${c}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Описание</label>
-          <input class="form-input" name="description" value="${v.description || ''}" placeholder="Что именно" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Сумма ₴</label>
-          <input class="form-input" name="amount" type="number" step="0.01" value="${v.amount || ''}" placeholder="0" required>
-        </div>
+        <div class="form-group"><label class="form-label">Дата</label>
+          <input class="form-input" name="date" type="date" value="${v.date || today}" required></div>
+        <div class="form-group"><label class="form-label">Категория</label>
+          <select class="form-select" name="category">${EXPENSE_CATEGORIES.filter(c => c !== 'Все').map(c => `<option value="${c}" ${v.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Описание</label>
+          <input class="form-input" name="description" value="${v.description || ''}" placeholder="Что именно" required></div>
+        <div class="form-group"><label class="form-label">Сумма ₴</label>
+          <input class="form-input" name="amount" type="number" step="0.01" value="${v.amount || ''}" placeholder="0" required></div>
         <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
-        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}
-      `;
+        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
   }
 }
 
-// Form submit
+// ============================================================
+// FORM SUBMIT
+// ============================================================
 let lastAddedId = null;
 
 document.getElementById('modal-form').addEventListener('submit', (e) => {
   e.preventDefault();
-  const form = e.target;
-  const fd = new FormData(form);
+  const fd = new FormData(e.target);
   const data = Object.fromEntries(fd.entries());
 
-  // Convert numbers
   ['buyPrice', 'sellPrice', 'quantity', 'cost', 'amount', 'deliveryCost'].forEach(k => {
     if (data[k] !== undefined) data[k] = parseFloat(data[k]) || 0;
   });
@@ -1444,11 +1515,13 @@ document.getElementById('modal-form').addEventListener('submit', (e) => {
   const isEdit = !!state.editingItem;
 
   if (isEdit) {
+    data.updatedAt = new Date().toISOString();
     Object.assign(state.editingItem, data);
     lastAddedId = state.editingItem.id;
   } else {
     data.id = genId();
     data.createdAt = new Date().toISOString();
+    data.updatedAt = data.createdAt;
     lastAddedId = data.id;
     switch (type) {
       case 'product': state.products.push(data); break;
@@ -1461,11 +1534,9 @@ document.getElementById('modal-form').addEventListener('submit', (e) => {
   saveState();
   haptic('success');
 
-  // Animate modal close, then re-render with highlight
   closeModal(() => {
     renderCurrentTab();
     showToast(isEdit ? '✅ Сохранено' : '✅ Добавлено');
-    // Scroll to new card and highlight
     setTimeout(() => {
       const card = document.querySelector(`[data-id="${lastAddedId}"]`);
       if (card) {
@@ -1477,7 +1548,9 @@ document.getElementById('modal-form').addEventListener('submit', (e) => {
   });
 });
 
-// Delete
+// ============================================================
+// DELETE
+// ============================================================
 function deleteItem() {
   const type = state.editingType;
   const item = state.editingItem;
@@ -1499,7 +1572,9 @@ function deleteItem() {
   });
 }
 
-// Confirm dialog
+// ============================================================
+// CONFIRM DIALOG
+// ============================================================
 let confirmCallback = null;
 
 function showConfirm(title, msg, onOk) {
@@ -1521,21 +1596,10 @@ document.getElementById('confirm-ok').addEventListener('click', () => {
 });
 
 // ============================================================
-// FAB
+// FAB & SEARCH
 // ============================================================
 document.getElementById('fab').addEventListener('click', openAddModal);
 
-// Hide fab on dashboard
-const fabEl = document.getElementById('fab');
-const origSwitchTab = switchTab;
-switchTab = function(tab) {
-  origSwitchTab(tab);
-  fabEl.style.display = tab === 'dashboard' ? 'none' : 'flex';
-};
-
-// ============================================================
-// SEARCH
-// ============================================================
 document.getElementById('product-search').addEventListener('input', (e) => {
   state.searchQuery = e.target.value;
   renderProducts();
@@ -1546,10 +1610,8 @@ document.getElementById('product-search').addEventListener('input', (e) => {
 // ============================================================
 document.getElementById('exportBtn').addEventListener('click', () => {
   const data = {
-    products: state.products,
-    deliveriesIn: state.deliveriesIn,
-    deliveriesOut: state.deliveriesOut,
-    expenses: state.expenses,
+    products: state.products, deliveriesIn: state.deliveriesIn,
+    deliveriesOut: state.deliveriesOut, expenses: state.expenses,
     exportedAt: new Date().toISOString(),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1559,7 +1621,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   a.download = `apple-store-backup-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('📤 Данные экспортированы');
+  showToast('📤 Экспортировано');
   haptic('medium');
 });
 
@@ -1574,23 +1636,17 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
   reader.onload = (ev) => {
     try {
       const data = JSON.parse(ev.target.result);
-      showConfirm(
-        'Импортировать данные?',
-        'Текущие данные будут заменены данными из файла',
-        () => {
-          if (data.products) state.products = data.products;
-          if (data.deliveriesIn) state.deliveriesIn = data.deliveriesIn;
-          if (data.deliveriesOut) state.deliveriesOut = data.deliveriesOut;
-          if (data.expenses) state.expenses = data.expenses;
-          saveState();
-          renderCurrentTab();
-          showToast('📥 Данные импортированы');
-          haptic('heavy');
-        }
-      );
-    } catch {
-      showToast('❌ Ошибка чтения файла');
-    }
+      showConfirm('Импортировать данные?', 'Текущие данные будут заменены', () => {
+        if (data.products) state.products = data.products;
+        if (data.deliveriesIn) state.deliveriesIn = data.deliveriesIn;
+        if (data.deliveriesOut) state.deliveriesOut = data.deliveriesOut;
+        if (data.expenses) state.expenses = data.expenses;
+        saveState();
+        renderCurrentTab();
+        showToast('📥 Импортировано');
+        haptic('heavy');
+      });
+    } catch { showToast('❌ Ошибка файла', true); }
   };
   reader.readAsText(file);
   e.target.value = '';
@@ -1601,10 +1657,22 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
 // ============================================================
 function init() {
   initTelegram();
-  loadAllFromCloud(() => {
-    loadState();
-    renderProducts();
-  });
+  loadState();
+
+  // Show setup screen on first launch or if no config
+  const setupDone = localStorage.getItem('asm_setup_done');
+  if (syncEnabled) {
+    hideSetupScreen();
+    pullFromFirebase().then(() => {
+      startRealtimeListener();
+    });
+  } else if (setupDone) {
+    hideSetupScreen();
+    setSyncStatus('offline');
+  }
+  // else: setup screen is visible by default
+
+  renderProducts();
 }
 
 init();
