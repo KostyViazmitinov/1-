@@ -47,15 +47,16 @@
       --card-blur: blur(20px);
     }
 
+    .theme-light {
       --bg-primary: #F2F2F7;
       --bg-secondary: rgba(255, 255, 255, 0.8);
       --bg-tertiary: #E5E5EA;
       --bg-card: rgba(255, 255, 255, 0.9);
       --text-primary: #000000;
-      --text-secondary: #8A8A8E;
-      --text-tertiary: #C7C7CC;
-      --border: rgba(0, 0, 0, 0.05);
-      --shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+      --text-secondary: #666666;
+      --text-tertiary: #8A8A8E;
+      --border: rgba(0, 0, 0, 0.08);
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
       --header-bg: rgba(242, 242, 247, 0.75);
       --nav-bg: rgba(255, 255, 255, 0.85);
       --overlay-bg: rgba(0, 0, 0, 0.3);
@@ -972,6 +973,50 @@ function loadState() {
 // ============================================================
 // UTILITY
 // ============================================================
+function getDeliveryOutItems(d) {
+  if (d.items && d.items.length > 0) return d.items;
+  if (d.productId) return [{ productId: d.productId, quantity: d.quantity || 1 }];
+  return [];
+}
+
+function addBundleRow() {
+  const container = document.getElementById('bundleItemsContainer');
+  if (!container) return;
+  const prodOptionsOut = state.products.map(p => `<option value="${p.id}" data-price="${p.sellPrice}">${p.name} (Остаток: ${p.quantity || 0} шт)</option>`).join('');
+  const row = document.createElement('div');
+  row.className = 'form-row';
+  row.style.marginBottom = '10px';
+  row.innerHTML = `
+    <div class="form-group" style="flex: 2; margin-bottom: 0;">
+      <select class="form-select" name="bundleProductId[]" required onchange="updateBundleTotal()">
+        <option value="" disabled selected>Товар</option>
+        ${prodOptionsOut}
+      </select>
+    </div>
+    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+      <input class="form-input" name="bundleItemQty[]" type="number" value="1" required onchange="updateBundleTotal()">
+    </div>
+    <button type="button" class="btn" style="background:var(--red-bg); color:var(--red); padding:0 12px;" onclick="this.parentElement.remove(); updateBundleTotal()">×</button>
+  `;
+  container.appendChild(row);
+}
+
+function updateBundleTotal() {
+  let total = 0;
+  const selects = document.querySelectorAll('select[name="bundleProductId[]"]');
+  const qties = document.querySelectorAll('input[name="bundleItemQty[]"]');
+  for (let i = 0; i < selects.length; i++) {
+    const sel = selects[i];
+    const qty = parseInt(qties[i].value) || 1;
+    if (sel.selectedIndex > 0) {
+      const price = parseFloat(sel.options[sel.selectedIndex].dataset.price) || 0;
+      total += price * qty;
+    }
+  }
+  const sellPriceInput = document.querySelector('input[name=sellPrice]');
+  if (sellPriceInput) sellPriceInput.value = total;
+}
+
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function fmt(n) { return new Intl.NumberFormat('uk-UA').format(Math.round(n)); }
 function fmtCurrency(n) { return fmt(n) + ' ₴'; }
@@ -1271,22 +1316,31 @@ function renderDeliveries() {
         ${d.trackNumber ? `<div class="data-card-row"><span class="label">Трек</span><span class="value" style="font-size:12px">${d.trackNumber}</span></div>` : ''}
       </div>`).join('');
   } else {
-    listEl.innerHTML = items.map((d, i) => `
+    listEl.innerHTML = items.map((d, i) => {
+      const bItems = getDeliveryOutItems(d);
+      const title = bItems.length > 1 
+        ? bItems.map(it => { const p = state.products.find(x => x.id === it.productId); return p ? p.name : 'Товар'; }).join(' + ')
+        : (d.item || 'Товар');
+      const totalQty = bItems.reduce((s, it) => s + (it.quantity || 1), 0);
+
+      return `
       <div class="data-card" data-id="${d.id}" data-type="deliveryOut" style="animation-delay:${i * 0.04}s">
         <div class="data-card-header">
-          <div class="data-card-title">${d.item}</div>
+          <div class="data-card-title">${title}</div>
           <span class="data-card-badge ${getStatusBadge(d.status)}">${d.status}</span>
         </div>
         <div class="data-card-row"><span class="label">Клиент</span><span class="value">${d.client || '—'}</span></div>
         <div class="data-card-row"><span class="label">Способ</span><span class="value">${d.type || '—'}</span></div>
         <div class="data-card-row"><span class="label">Дата</span><span class="value">${fmtDate(d.date)}</span></div>
-        <div class="data-card-row"><span class="label">Кол-во</span><span class="value">${d.quantity || 1} шт</span></div>
+        <div class="data-card-row"><span class="label">Кол-во</span><span class="value">${totalQty} шт</span></div>
+        ${d.comment ? `<div class="data-card-row"><span class="label" style="color: var(--text-secondary);">📝 Коммент</span><span class="value" style="font-size:12px; font-style:italic;">${d.comment}</span></div>` : ''}
         <div class="data-card-row"><span class="label">Доставка</span><span class="value">${fmtCurrency(d.deliveryCost || 0)}</span></div>
         <div class="data-card-footer">
           <span class="label">Продажа</span>
           <span class="profit text-green">${fmtCurrency(d.sellPrice || 0)}</span>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   listEl.querySelectorAll('.data-card').forEach(card => {
@@ -1466,8 +1520,11 @@ function renderDashboard() {
   const totalRevenue = successfulOut.reduce((s, d) => s + (d.sellPrice || 0), 0);
   
   const cogs = successfulOut.reduce((s, d) => {
-    const p = state.products.find(x => x.id === d.productId);
-    return s + (p ? p.buyPrice * (d.quantity || 1) : 0);
+    const items = getDeliveryOutItems(d);
+    return s + items.reduce((sum, it) => {
+      const p = state.products.find(x => x.id === it.productId);
+      return sum + (p ? p.buyPrice * it.quantity : 0);
+    }, 0);
   }, 0);
 
   const returns = deliveriesOut.filter(d => d.status === 'Отказ/Возврат');
@@ -1483,13 +1540,35 @@ function renderDashboard() {
 
   // Analytics Math
   const productSalesMap = {};
+  const catSales = {};
+
   successfulOut.forEach(d => {
-    if (!productSalesMap[d.productId]) productSalesMap[d.productId] = { qty: 0, revenue: 0, profit: 0 };
-    const p = state.products.find(x => x.id === d.productId);
-    const qty = d.quantity || 1;
-    productSalesMap[d.productId].qty += qty;
-    productSalesMap[d.productId].revenue += (d.sellPrice || 0);
-    if (p) productSalesMap[d.productId].profit += ((d.sellPrice || 0) - (p.buyPrice * qty));
+    const items = getDeliveryOutItems(d);
+    const bundleBasePrice = items.reduce((sum, it) => {
+      const p = state.products.find(x => x.id === it.productId);
+      return sum + (p ? p.sellPrice * it.quantity : 0);
+    }, 0);
+
+    items.forEach(it => {
+      const p = state.products.find(x => x.id === it.productId);
+      if (!p) return;
+      
+      if (!productSalesMap[it.productId]) productSalesMap[it.productId] = { qty: 0, revenue: 0, profit: 0 };
+      productSalesMap[it.productId].qty += it.quantity;
+      
+      let allocatedRevenue = 0;
+      if (bundleBasePrice > 0) {
+        allocatedRevenue = ((p.sellPrice * it.quantity) / bundleBasePrice) * (d.sellPrice || 0);
+      } else {
+        allocatedRevenue = (d.sellPrice || 0) / items.length;
+      }
+      
+      productSalesMap[it.productId].revenue += allocatedRevenue;
+      productSalesMap[it.productId].profit += (allocatedRevenue - (p.buyPrice * it.quantity));
+
+      const cat = p.category || 'Разное';
+      catSales[cat] = (catSales[cat] || 0) + allocatedRevenue;
+    });
   });
 
   const hits = Object.entries(productSalesMap)
@@ -1500,12 +1579,6 @@ function renderDashboard() {
   const topProfitable = [...hits].sort((a,b) => b.profit - a.profit)[0];
   const deadStock = state.products.filter(p => (p.quantity || 0) > 0 && !productSalesMap[p.id]);
   
-  const catSales = {};
-  successfulOut.forEach(d => {
-    const p = state.products.find(x => x.id === d.productId);
-    const cat = p ? p.category : 'Разное';
-    catSales[cat] = (catSales[cat] || 0) + (d.sellPrice || 0);
-  });
   const topCat = Object.entries(catSales).sort((a,b) => b[1] - a[1])[0];
 
   const mostExpensive = [...state.products].sort((a,b) => b.sellPrice - a.sellPrice)[0];
@@ -1737,20 +1810,38 @@ function getFormHTML(type, item) {
     }
 
     case 'deliveryOut': {
-      const prodOptionsOut = state.products.map(p => `<option value="${p.id}" ${v.productId === p.id ? 'selected' : ''} data-price="${p.sellPrice}">${p.name} (Остаток: ${p.quantity || 0} шт)</option>`).join('');
+      const items = getDeliveryOutItems(v);
+      if (items.length === 0) items.push({ productId: '', quantity: 1 }); // Default empty row
+      
+      const prodOptionsOut = (selectedId) => state.products.map(p => `<option value="${p.id}" ${selectedId === p.id ? 'selected' : ''} data-price="${p.sellPrice}">${p.name} (Остаток: ${p.quantity || 0} шт)</option>`).join('');
+      
+      const itemsHtml = items.map((it, i) => `
+        <div class="form-row" style="margin-bottom: 10px;">
+          <div class="form-group" style="flex: 2; margin-bottom: 0;">
+            <select class="form-select" name="bundleProductId[]" required onchange="updateBundleTotal()">
+              <option value="" disabled ${!it.productId ? 'selected' : ''}>Товар</option>
+              ${prodOptionsOut(it.productId)}
+            </select>
+          </div>
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <input class="form-input" name="bundleItemQty[]" type="number" value="${it.quantity || 1}" required onchange="updateBundleTotal()">
+          </div>
+          ${i > 0 ? `<button type="button" class="btn" style="background:var(--red-bg); color:var(--red); padding:0 12px;" onclick="this.parentElement.remove(); updateBundleTotal()">×</button>` : ''}
+        </div>
+      `).join('');
+
       return `
-        <div class="form-group"><label class="form-label">Товар</label>
-          <select class="form-select" name="productId" required onchange="document.querySelector('input[name=sellPrice]').value = this.options[this.selectedIndex].dataset.price || ''">
-            <option value="" disabled ${!v.productId ? 'selected' : ''}>Выберите товар со склада</option>
-            ${prodOptionsOut}
-          </select>
+        <div class="form-group">
+          <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Товары (Комплект)</span>
+            <button type="button" class="btn" style="padding: 4px 10px; font-size: 11px; background: var(--bg-tertiary);" onclick="addBundleRow()">+ Добавить</button>
+          </label>
+          <div id="bundleItemsContainer">
+            ${itemsHtml}
+          </div>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Количество</label>
-            <input class="form-input" name="quantity" type="number" value="${v.quantity || 1}" required></div>
-          <div class="form-group"><label class="form-label">Цена продажи ₴</label>
-            <input class="form-input" name="sellPrice" type="number" step="0.01" value="${v.sellPrice || ''}" placeholder="0"></div>
-        </div>
+        <div class="form-group"><label class="form-label">Общая цена продажи ₴</label>
+          <input class="form-input" name="sellPrice" type="number" step="0.01" value="${v.sellPrice || ''}" placeholder="0" required></div>
         <div class="form-group"><label class="form-label">Клиент</label>
           <input class="form-input" name="client" value="${v.client || ''}" placeholder="Имя или ник"></div>
         <div class="form-row">
@@ -1767,6 +1858,8 @@ function getFormHTML(type, item) {
         </div>
         <div class="form-group"><label class="form-label">Трек-номер</label>
           <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно"></div>
+        <div class="form-group"><label class="form-label">Комментарий</label>
+          <textarea class="form-textarea" name="comment" placeholder="Например: Стекло поклеили бесплатно">${v.comment || ''}</textarea></div>
         ${item ? `
           <div class="form-row mt-16" style="margin-top: 12px; gap: 8px;">
             <button type="button" class="btn" style="background:var(--bg-tertiary);flex:1;font-size:13px;" onclick="copyClientMessage('ua', '${v.id}')">ТТН (UA)</button>
@@ -1809,8 +1902,21 @@ document.getElementById('modal-form').addEventListener('submit', (e) => {
   const type = state.editingType;
   const isEdit = !!state.editingItem;
 
+  if (type === 'deliveryOut') {
+    const pIds = fd.getAll('bundleProductId[]');
+    const qties = fd.getAll('bundleItemQty[]');
+    data.items = [];
+    for (let i = 0; i < pIds.length; i++) {
+      if (pIds[i]) {
+        data.items.push({ productId: pIds[i], quantity: parseFloat(qties[i]) || 1 });
+      }
+    }
+    delete data['bundleProductId[]'];
+    delete data['bundleItemQty[]'];
+  }
+
   const product = data.productId ? state.products.find(p => p.id === data.productId) : null;
-  if (product) data.item = product.name; // Keep name for display
+  if (product && type !== 'deliveryOut') data.item = product.name; // Keep name for display
 
   if (isEdit) {
     data.updatedAt = new Date().toISOString();
@@ -1828,16 +1934,26 @@ document.getElementById('modal-form').addEventListener('submit', (e) => {
       product.quantity = (product.quantity || 0) + delta;
     }
 
-    if (type === 'deliveryOut' && product) {
+    if (type === 'deliveryOut') {
       const oldStatus = state.editingItem.status;
-      const oldQty = state.editingItem.quantity || 0;
       const newStatus = data.status;
-      const newQty = data.quantity || 0;
-      let delta = 0;
-      if (oldStatus !== 'Отказ/Возврат' && newStatus !== 'Отказ/Возврат') delta = oldQty - newQty;
-      else if (oldStatus !== 'Отказ/Возврат' && newStatus === 'Отказ/Возврат') delta = oldQty;
-      else if (oldStatus === 'Отказ/Возврат' && newStatus !== 'Отказ/Возврат') delta = -newQty;
-      product.quantity = (product.quantity || 0) + delta;
+      
+      // Revert old items
+      if (oldStatus !== 'Отказ/Возврат') {
+        const oldItems = getDeliveryOutItems(state.editingItem);
+        oldItems.forEach(it => {
+          const p = state.products.find(x => x.id === it.productId);
+          if (p) p.quantity = (p.quantity || 0) + (it.quantity || 0);
+        });
+      }
+      // Apply new items
+      if (newStatus !== 'Отказ/Возврат') {
+        const newItems = getDeliveryOutItems(data);
+        newItems.forEach(it => {
+          const p = state.products.find(x => x.id === it.productId);
+          if (p) p.quantity = (p.quantity || 0) - (it.quantity || 0);
+        });
+      }
     }
 
     Object.assign(state.editingItem, data);
@@ -1852,8 +1968,12 @@ document.getElementById('modal-form').addEventListener('submit', (e) => {
     if (type === 'deliveryIn' && data.status === 'Доставлено' && product) {
       product.quantity = (product.quantity || 0) + (data.quantity || 0);
     }
-    if (type === 'deliveryOut' && data.status !== 'Отказ/Возврат' && product) {
-      product.quantity = (product.quantity || 0) - (data.quantity || 0);
+    if (type === 'deliveryOut' && data.status !== 'Отказ/Возврат') {
+      const newItems = getDeliveryOutItems(data);
+      newItems.forEach(it => {
+        const p = state.products.find(x => x.id === it.productId);
+        if (p) p.quantity = (p.quantity || 0) - (it.quantity || 0);
+      });
     }
 
     switch (type) {
@@ -1891,14 +2011,16 @@ function deleteItem() {
 
   showConfirm('Удалить запись?', 'Это действие нельзя отменить', () => {
     // Revert inventory
-    const product = item.productId ? state.products.find(p => p.id === item.productId) : null;
-    if (product) {
-      if (type === 'deliveryIn' && item.status === 'Доставлено') {
-        product.quantity = (product.quantity || 0) - (item.quantity || 0);
-      }
-      if (type === 'deliveryOut' && item.status !== 'Отказ/Возврат') {
-        product.quantity = (product.quantity || 0) + (item.quantity || 0);
-      }
+    if (type === 'deliveryIn' && item.status === 'Доставлено') {
+      const product = item.productId ? state.products.find(p => p.id === item.productId) : null;
+      if (product) product.quantity = (product.quantity || 0) - (item.quantity || 0);
+    }
+    if (type === 'deliveryOut' && item.status !== 'Отказ/Возврат') {
+      const oldItems = getDeliveryOutItems(item);
+      oldItems.forEach(it => {
+        const p = state.products.find(x => x.id === it.productId);
+        if (p) p.quantity = (p.quantity || 0) + (it.quantity || 0);
+      });
     }
 
     switch (type) {
