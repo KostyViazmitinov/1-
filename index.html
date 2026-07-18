@@ -738,12 +738,31 @@ async function pullFromFirebase() {
   setSyncStatus('syncing');
   try {
     const resp = await fetch(`${getFirebasePath()}/data.json`);
-    if (!resp.ok) throw new Error('Firebase GET failed');
+    if (!resp.ok) throw new Error('Firebase GET data failed');
     const data = await resp.json();
     if (data) {
       applyRemoteData(data);
       lastRemoteHash = JSON.stringify(data);
     }
+    
+    // Presence logic
+    const deviceName = tg.initDataUnsafe?.user?.first_name 
+      ? `${tg.initDataUnsafe.user.first_name} (${tg.platform || 'web'})`
+      : `Устройство (${tg.platform || 'web'})`;
+      
+    // Send heartbeat (fire and forget)
+    fetch(`${getFirebasePath()}/presence/${state.deviceId}.json`, {
+      method: 'PUT',
+      body: JSON.stringify({ name: deviceName, lastActive: Date.now() })
+    }).catch(e => console.error('Presence push error', e));
+
+    // Fetch presence
+    const presResp = await fetch(`${getFirebasePath()}/presence.json`);
+    if (presResp.ok) {
+      const presData = await presResp.json();
+      if (presData) window.activeDevices = presData;
+    }
+
     setSyncStatus('');
   } catch (err) {
     console.error('Firebase pull error:', err);
@@ -753,24 +772,33 @@ async function pullFromFirebase() {
 
 function applyRemoteData(data) {
   let changed = false;
-  if (data.products && JSON.stringify(data.products) !== JSON.stringify(state.products)) {
-    state.products = mergeArrays(state.products, data.products);
+  
+  const remoteProducts = data.products || [];
+  if (JSON.stringify(remoteProducts) !== JSON.stringify(state.products)) {
+    state.products = remoteProducts;
     changed = true;
   }
-  if (data.deliveriesIn && JSON.stringify(data.deliveriesIn) !== JSON.stringify(state.deliveriesIn)) {
-    state.deliveriesIn = mergeArrays(state.deliveriesIn, data.deliveriesIn);
+  
+  const remoteIn = data.deliveriesIn || [];
+  if (JSON.stringify(remoteIn) !== JSON.stringify(state.deliveriesIn)) {
+    state.deliveriesIn = remoteIn;
     changed = true;
   }
-  if (data.deliveriesOut && JSON.stringify(data.deliveriesOut) !== JSON.stringify(state.deliveriesOut)) {
-    state.deliveriesOut = mergeArrays(state.deliveriesOut, data.deliveriesOut);
+  
+  const remoteOut = data.deliveriesOut || [];
+  if (JSON.stringify(remoteOut) !== JSON.stringify(state.deliveriesOut)) {
+    state.deliveriesOut = remoteOut;
     changed = true;
   }
-  if (data.expenses && JSON.stringify(data.expenses) !== JSON.stringify(state.expenses)) {
-    state.expenses = mergeArrays(state.expenses, data.expenses);
+  
+  const remoteExp = data.expenses || [];
+  if (JSON.stringify(remoteExp) !== JSON.stringify(state.expenses)) {
+    state.expenses = remoteExp;
     changed = true;
   }
+
   if (changed) {
-    saveLocal();
+    localStorage.setItem('asm_state', JSON.stringify(state));
     renderCurrentTab();
     showToast('🔄 Данные обновлены', false, 'sync');
   }
@@ -885,6 +913,12 @@ function loadState() {
   state.deliveriesIn = loadData(STORAGE_KEYS.deliveriesIn);
   state.deliveriesOut = loadData(STORAGE_KEYS.deliveriesOut);
   state.expenses = loadData(STORAGE_KEYS.expenses);
+  const savedDevId = localStorage.getItem('asm_dev_id');
+  if (savedDevId) state.deviceId = savedDevId;
+  else {
+    state.deviceId = 'dev_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('asm_dev_id', state.deviceId);
+  }
 }
 
 // ============================================================
@@ -1355,7 +1389,7 @@ window.setDashFilter = function(filter) {
 function renderDashboard() {
   const el = document.getElementById('dashboard-content');
   const now = new Date();
-  const filter = state.dashFilter || 'month'; // 'month' or 'all'
+  const filter = state.dashFilter || 'month';
 
   const isCurrentMonth = (dateString) => {
     if (!dateString) return false;
@@ -1367,7 +1401,7 @@ function renderDashboard() {
   const deliveriesOut = filter === 'month' ? state.deliveriesOut.filter(d => isCurrentMonth(d.date)) : state.deliveriesOut;
   const deliveriesIn = filter === 'month' ? state.deliveriesIn.filter(d => isCurrentMonth(d.expectedDate || d.createdAt)) : state.deliveriesIn;
 
-  // Inventory stats (always global, not time-filtered)
+  // Inventory stats
   const totalInvested = state.products.reduce((s, p) => s + p.buyPrice * (p.quantity || 0), 0);
   const totalSell = state.products.reduce((s, p) => s + p.sellPrice * (p.quantity || 0), 0);
   const totalUnits = state.products.reduce((s, p) => s + (p.quantity || 0), 0);
@@ -1392,11 +1426,43 @@ function renderDashboard() {
   const returnLoss = returns.reduce((s, d) => s + (d.deliveryCost || 0), 0);
 
   const totalDeliveryCost = deliveriesOut.reduce((s, d) => s + (d.deliveryCost || 0), 0);
+  const incomingDeliveryCost = deliveriesIn.reduce((s, d) => s + (d.deliveryCost || 0), 0);
   const totalExpensesAmount = expenses.reduce((s, e) => s + (e.amount || 0), 0);
-  const netProfit = totalRevenue - cogs - totalDeliveryCost - totalExpensesAmount;
+  const netProfit = totalRevenue - cogs - totalDeliveryCost - incomingDeliveryCost - totalExpensesAmount;
 
   const inTransit = state.deliveriesIn.filter(d => d.status !== 'Доставлено').length;
   const outPending = state.deliveriesOut.filter(d => d.status !== 'Получено').length;
+
+  // Analytics Math
+  const productSalesMap = {};
+  successfulOut.forEach(d => {
+    if (!productSalesMap[d.productId]) productSalesMap[d.productId] = { qty: 0, revenue: 0, profit: 0 };
+    const p = state.products.find(x => x.id === d.productId);
+    const qty = d.quantity || 1;
+    productSalesMap[d.productId].qty += qty;
+    productSalesMap[d.productId].revenue += (d.sellPrice || 0);
+    if (p) productSalesMap[d.productId].profit += ((d.sellPrice || 0) - (p.buyPrice * qty));
+  });
+
+  const hits = Object.entries(productSalesMap)
+    .map(([id, data]) => ({ id, ...data, p: state.products.find(x => x.id === id) }))
+    .filter(x => x.p).sort((a, b) => b.qty - a.qty);
+  
+  const topHit = hits[0];
+  const topProfitable = [...hits].sort((a,b) => b.profit - a.profit)[0];
+  const deadStock = state.products.filter(p => (p.quantity || 0) > 0 && !productSalesMap[p.id]);
+  
+  const catSales = {};
+  successfulOut.forEach(d => {
+    const p = state.products.find(x => x.id === d.productId);
+    const cat = p ? p.category : 'Разное';
+    catSales[cat] = (catSales[cat] || 0) + (d.sellPrice || 0);
+  });
+  const topCat = Object.entries(catSales).sort((a,b) => b[1] - a[1])[0];
+
+  const mostExpensive = [...state.products].sort((a,b) => b.sellPrice - a.sellPrice)[0];
+  const cheapest = [...state.products].sort((a,b) => a.sellPrice - b.sellPrice)[0];
+  const maxMargin = [...state.products].filter(p => p.buyPrice > 0).map(p => ({...p, m: (p.sellPrice-p.buyPrice)/p.buyPrice})).sort((a,b) => b.m - a.m)[0];
 
   // Clients
   const clientMap = {};
@@ -1408,7 +1474,8 @@ function renderDashboard() {
     clientMap[name].count++;
     clientMap[name].spent += (d.sellPrice || 0);
   });
-  const topClients = Object.entries(clientMap).map(([name, data]) => ({ name, ...data })).filter(c => c.count > 1 || c.spent >= 500).sort((a,b) => b.spent - a.spent).slice(0, 5);
+  const topClients = Object.entries(clientMap).map(([name, data]) => ({ name, ...data })).sort((a,b) => b.spent - a.spent);
+  const loyaltyClients = topClients.filter(c => c.count > 1 || c.spent >= 500);
 
   let html = `
     <div class="segment-control" style="margin-bottom: 16px;">
@@ -1420,44 +1487,86 @@ function renderDashboard() {
       <div class="summary-card green" style="grid-column: span 2; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px;">
         <div class="label" style="font-size: 14px; opacity: 0.9;">💵 Чистая прибыль</div>
         <div class="value" style="font-size: 28px;">${fmtCurrency(netProfit)}</div>
-        <div class="sub" style="opacity: 0.7;">Выручка минус закупка, доставка и расходы</div>
+        <div class="sub" style="opacity: 0.7;">Выручка минус закупка, логистика и расходы</div>
       </div>
       <div class="summary-card"><div class="label">📈 Выручка</div><div class="value">${fmtCurrency(totalRevenue)}</div><div class="sub">${successfulOut.length} продаж</div></div>
-      <div class="summary-card accent"><div class="label">📦 Товарный запас</div><div class="value">${fmtCurrency(totalInvested)}</div><div class="sub">Вложено в склад</div></div>
+      <div class="summary-card accent"><div class="label">📦 Склад</div><div class="value">${fmtCurrency(totalInvested)}</div><div class="sub">${fmt(totalUnits)} шт</div></div>
     </div>
     
-    <div class="dash-section">
-      <div class="dash-section-title">📊 Обзор операций</div>
-      <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--accent-light)">📦</div><div><div class="name">Товары на складе</div><div class="detail">${state.products.length} позиций</div></div></div><div class="right"><div class="amount">${fmt(totalUnits)} шт</div></div></div>
-      <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--yellow-bg)">🚚</div><div><div class="name">В пути к нам</div><div class="detail">Входящие доставки</div></div></div><div class="right"><div class="amount">${inTransit}</div></div></div>
-      <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--green-bg)">🚀</div><div><div class="name">Отправлено</div><div class="detail">Исходящие доставки</div></div></div><div class="right"><div class="amount">${outPending}</div></div></div>
-      <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">💸</div><div><div class="name">Расходы</div><div class="detail">${expenses.length} записей + логистика</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(totalExpensesAmount + totalDeliveryCost)}</div></div></div>
-      ${returns.length > 0 ? `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">🔙</div><div><div class="name">Отказы / Возвраты</div><div class="detail">${returns.length} шт</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(returnLoss)}</div><div class="sub">Потери на доставке</div></div></div>` : ''}
-    </div>`;
+    <details class="dash-accordion" open>
+      <summary>📊 Обзор операций</summary>
+      <div class="accordion-content">
+        <div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--yellow-bg)">🚚</div><div><div class="name">В пути к нам</div><div class="detail">Ожидается доставок</div></div></div><div class="right"><div class="amount">${inTransit}</div></div></div>
+        <div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--green-bg)">🚀</div><div><div class="name">Отправлено клиентам</div><div class="detail">В процессе доставки</div></div></div><div class="right"><div class="amount">${outPending}</div></div></div>
+        <div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">💸</div><div><div class="name">Траты</div><div class="detail">Закупки + Логистика + Расходы</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(cogs + totalDeliveryCost + incomingDeliveryCost + totalExpensesAmount)}</div></div></div>
+        ${returns.length > 0 ? `<div class="dash-item" style="padding:8px 0;border-bottom:none"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">🔙</div><div><div class="name">Возвраты</div><div class="detail">${returns.length} шт</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(returnLoss)}</div><div class="sub">Потеря на доставке</div></div></div>` : ''}
+      </div>
+    </details>
 
-  if (topClients.length > 0) {
-    html += `<div class="dash-section"><div class="dash-section-title">👑 Топ клиенты (Лояльность)</div>
-    <div style="font-size: 13px; color: var(--text-secondary); margin: -6px 0 12px 4px;">Предлагайте скидку 10% по промокоду <b>LEV</b>!</div>`;
-    topClients.forEach((c, i) => {
-      html += `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--purple-bg);font-size:14px;font-weight:700">${i + 1}</div><div><div class="name">${c.name}</div><div class="detail">${c.count} покупок</div></div></div><div class="right"><div class="amount text-purple">${fmtCurrency(c.spent)}</div></div></div>`;
-    });
-    html += `</div>`;
-  }
+    <details class="dash-accordion">
+      <summary>🔥 Тренды (Что берут)</summary>
+      <div class="accordion-content">
+        ${topHit ? `<div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--purple-bg)">1️⃣</div><div><div class="name">Хит продаж</div><div class="detail">${topHit.p.name}</div></div></div><div class="right"><div class="amount">${topHit.qty} шт</div><div class="sub">${fmtCurrency(topHit.revenue)}</div></div></div>` : '<div class="empty-state" style="padding:10px 0"><div class="desc">Нет данных за этот период</div></div>'}
+        ${topCat ? `<div class="dash-item" style="padding:8px 0;border-bottom:none"><div class="left"><div class="icon-circle" style="background:var(--accent-light)">📁</div><div><div class="name">Лучшая категория</div><div class="detail">${topCat[0]}</div></div></div><div class="right"><div class="amount">${fmtCurrency(topCat[1])}</div></div></div>` : ''}
+      </div>
+    </details>
 
-  if (lowStock.length > 0) {
-    html += `<div class="dash-section"><div class="dash-section-title">⚠️ Пора заказывать</div>`;
-    lowStock.forEach(p => {
-      let qtyStr = `${p.quantity || 0} шт`;
-      if (p.incomingQty > 0) qtyStr += ` <span style="font-size: 12px; color: var(--text-secondary)">(+${p.incomingQty} в пути)</span>`;
-      html += `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">⚠️</div><div><div class="name">${p.name}</div><div class="detail">${p.category}</div></div></div><div class="right"><div class="amount text-red">${qtyStr}</div></div></div>`;
-    });
-    html += `</div>`;
-  }
+    <details class="dash-accordion">
+      <summary>💎 Золотые товары (Цены и Маржа)</summary>
+      <div class="accordion-content">
+        ${topProfitable ? `<div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--green-bg)">💰</div><div><div class="name">Кормилец</div><div class="detail">${topProfitable.p.name}</div></div></div><div class="right"><div class="amount text-green">+${fmtCurrency(topProfitable.profit)}</div><div class="sub">Принёс чистыми</div></div></div>` : ''}
+        ${maxMargin ? `<div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--yellow-bg)">📈</div><div><div class="name">Макс. наценка</div><div class="detail">${maxMargin.name}</div></div></div><div class="right"><div class="amount">${(maxMargin.m * 100).toFixed(0)}%</div></div></div>` : ''}
+        ${mostExpensive ? `<div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--purple-bg)">💎</div><div><div class="name">Самый дорогой</div><div class="detail">${mostExpensive.name}</div></div></div><div class="right"><div class="amount">${fmtCurrency(mostExpensive.sellPrice)}</div></div></div>` : ''}
+        ${cheapest ? `<div class="dash-item" style="padding:8px 0;border-bottom:none"><div class="left"><div class="icon-circle" style="background:var(--bg-tertiary)">🏷️</div><div><div class="name">Самый доступный</div><div class="detail">${cheapest.name}</div></div></div><div class="right"><div class="amount">${fmtCurrency(cheapest.sellPrice)}</div></div></div>` : ''}
+      </div>
+    </details>
 
-  // Sync status section
-  html += `<div class="dash-section"><div class="dash-section-title">⚙️ Синхронизация</div>
-    <div class="dash-item"><div class="left"><div class="icon-circle" style="background:${syncEnabled ? 'var(--green-bg)' : 'var(--bg-tertiary)'}">🔗</div><div><div class="name">${syncEnabled ? 'Подключена' : 'Не подключена'}</div><div class="detail">${syncEnabled ? 'Код: ' + storeCode : 'Нажмите ⚙️ в шапке'}</div></div></div><div class="right"><div class="amount" style="font-size:13px">${syncEnabled ? '✅' : '—'}</div></div></div>
-  </div>`;
+    <details class="dash-accordion">
+      <summary>👑 Клиенты и Лояльность</summary>
+      <div class="accordion-content">
+        ${loyaltyClients.length > 0 ? `<div style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px 4px;">Предлагайте скидку 10% по промокоду <b>LEV</b>!</div>` : '<div class="empty-state" style="padding:10px 0"><div class="desc">Пока нет частых покупателей</div></div>'}
+        ${loyaltyClients.map((c, i) => `
+          <div class="dash-item" style="${i===0?'border:none;':''}padding:8px 0${i===loyaltyClients.length-1?';border-bottom:none':''}"><div class="left"><div class="icon-circle" style="background:var(--purple-bg);font-size:14px;font-weight:700">${i + 1}</div><div><div class="name">${c.name}</div><div class="detail">${c.count} покупок</div></div></div><div class="right"><div class="amount text-purple">${fmtCurrency(c.spent)}</div></div></div>
+        `).join('')}
+      </div>
+    </details>
+
+    ${deadStock.length > 0 ? `
+    <details class="dash-accordion">
+      <summary>❄️ Мёртвый груз (Не покупают)</summary>
+      <div class="accordion-content">
+        <div style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px 4px;">Товары на складе без продаж в этом периоде. Можно сделать скидку!</div>
+        ${deadStock.map((p, i) => `
+          <div class="dash-item" style="${i===0?'border:none;':''}padding:8px 0${i===deadStock.length-1?';border-bottom:none':''}"><div class="left"><div class="icon-circle" style="background:var(--bg-tertiary)">❄️</div><div><div class="name">${p.name}</div><div class="detail">Лежит на складе</div></div></div><div class="right"><div class="amount">${p.quantity} шт</div><div class="sub">Вложено: ${fmtCurrency(p.buyPrice * p.quantity)}</div></div></div>
+        `).join('')}
+      </div>
+    </details>` : ''}
+
+    ${lowStock.length > 0 ? `
+    <details class="dash-accordion" open>
+      <summary>⚠️ Пора заказывать</summary>
+      <div class="accordion-content">
+        ${lowStock.map((p, i) => {
+          let qtyStr = `${p.quantity || 0} шт`;
+          if (p.incomingQty > 0) qtyStr += ` <span style="font-size: 12px; color: var(--text-secondary)">(+${p.incomingQty} в пути)</span>`;
+          return `<div class="dash-item" style="${i===0?'border:none;':''}padding:8px 0${i===lowStock.length-1?';border-bottom:none':''}"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">⚠️</div><div><div class="name">${p.name}</div><div class="detail">${p.category}</div></div></div><div class="right"><div class="amount text-red">${qtyStr}</div></div></div>`;
+        }).join('')}
+      </div>
+    </details>` : ''}
+
+    <details class="dash-accordion">
+      <summary>⚙️ Синхронизация и Устройства</summary>
+      <div class="accordion-content">
+        <div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:${syncEnabled ? 'var(--green-bg)' : 'var(--bg-tertiary)'}">🔗</div><div><div class="name">${syncEnabled ? 'Подключена' : 'Не подключена'}</div><div class="detail">${syncEnabled ? 'Код: ' + storeCode : 'Нажмите ⚙️ в шапке'}</div></div></div><div class="right"><div class="amount" style="font-size:13px">${syncEnabled ? '✅' : '—'}</div></div></div>
+        ${window.activeDevices ? `
+          <div style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 4px 4px;">🟢 Сейчас онлайн (за последние 5 мин):</div>
+          ${Object.values(window.activeDevices).filter(d => Date.now() - d.lastActive < 300000).map((d, i, arr) => `
+            <div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--green-bg);font-size:14px">📱</div><div><div class="name">${d.name}</div><div class="detail">Активен</div></div></div></div>
+          `).join('')}
+        ` : ''}
+      </div>
+    </details>
+  `;
 
   el.innerHTML = html;
 }
@@ -1559,9 +1668,11 @@ function getFormHTML(type, item) {
         <div class="form-row">
           <div class="form-group"><label class="form-label">Количество</label>
             <input class="form-input" name="quantity" type="number" value="${v.quantity || 1}" required></div>
-          <div class="form-group"><label class="form-label">Стоимость ₴</label>
+          <div class="form-group"><label class="form-label">Стоимость товара ₴</label>
             <input class="form-input" name="cost" type="number" step="0.01" value="${v.cost || ''}" placeholder="0"></div>
         </div>
+        <div class="form-group"><label class="form-label">Стоимость доставки к нам ₴</label>
+          <input class="form-input" name="deliveryCost" type="number" step="0.01" value="${v.deliveryCost || ''}" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Поставщик</label>
           <input class="form-input" name="supplier" value="${v.supplier || ''}" placeholder="AliExpress, поставщик..."></div>
         <div class="form-row">
@@ -1756,6 +1867,8 @@ function deleteItem() {
     });
   });
 }
+
+
 
 // ============================================================
 // CONFIRM DIALOG
