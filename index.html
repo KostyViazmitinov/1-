@@ -30,11 +30,31 @@
       --purple-bg: rgba(191, 90, 242, 0.15);
       --border: rgba(255, 255, 255, 0.08);
       --shadow: rgba(0, 0, 0, 0.3);
+      --header-bg: rgba(0, 0, 0, 0.85);
+      --nav-bg: rgba(0, 0, 0, 0.9);
+      --overlay-bg: rgba(0, 0, 0, 0.6);
+      --confirm-bg: rgba(0, 0, 0, 0.7);
       --radius: 14px;
       --radius-sm: 10px;
       --radius-xs: 8px;
       --nav-height: 82px;
       --header-height: 56px;
+    }
+
+    .theme-light {
+      --bg-primary: #f2f2f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5ea;
+      --bg-card: #ffffff;
+      --text-primary: #000000;
+      --text-secondary: #8e8e93;
+      --text-tertiary: #8e8e93;
+      --border: rgba(0, 0, 0, 0.1);
+      --shadow: rgba(0, 0, 0, 0.1);
+      --header-bg: rgba(242, 242, 247, 0.85);
+      --nav-bg: rgba(255, 255, 255, 0.9);
+      --overlay-bg: rgba(0, 0, 0, 0.3);
+      --confirm-bg: rgba(0, 0, 0, 0.4);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -53,7 +73,7 @@
     .header {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       height: var(--header-height);
-      background: rgba(0, 0, 0, 0.85);
+      background: var(--header-bg);
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 16px;
@@ -149,7 +169,7 @@
     .bottom-nav {
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
       height: var(--nav-height);
-      background: rgba(0, 0, 0, 0.9);
+      background: var(--nav-bg);
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       display: flex; align-items: flex-start; justify-content: space-around;
       padding-top: 8px;
@@ -299,7 +319,7 @@
     /* === MODAL === */
     .modal-overlay {
       position: fixed; inset: 0; z-index: 200;
-      background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);
+      background: var(--overlay-bg); backdrop-filter: blur(4px);
       display: none; align-items: flex-end; justify-content: center;
       opacity: 0; transition: opacity 0.25s ease;
     }
@@ -435,7 +455,7 @@
     /* === CONFIRM DIALOG === */
     .confirm-dialog {
       position: fixed; inset: 0; z-index: 250;
-      background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+      background: var(--confirm-bg); backdrop-filter: blur(8px);
       display: none; align-items: center; justify-content: center;
     }
     .confirm-dialog.active { display: flex; }
@@ -610,7 +630,7 @@ const STORAGE_KEYS = {
 const CATEGORIES = ['Все', 'Чехлы', 'Стёкла', 'Зарядки', 'Кабели', 'Наушники', 'AirTag', 'Ремешки', 'Другое'];
 const EXPENSE_CATEGORIES = ['Все', 'Реклама', 'Объявления', 'Упаковка', 'Доставка', 'Связь', 'Аренда', 'Закупка товара', 'Другое'];
 const DELIVERY_STATUSES_IN = ['В пути', 'На таможне', 'Доставлено'];
-const DELIVERY_STATUSES_OUT = ['Отправлено', 'В пути', 'Доставлено', 'Получено'];
+const DELIVERY_STATUSES_OUT = ['Отправлено', 'В пути', 'Доставлено', 'Получено', 'Отказ/Возврат'];
 const DELIVERY_TYPES = ['Новая Почта', 'Укрпочта', 'Курьер', 'Личная встреча', 'Meest', 'Другое'];
 
 const EXPENSE_COLORS = {
@@ -632,6 +652,11 @@ function initTelegram() {
     tg.expand();
     tg.enableClosingConfirmation();
     isTelegram = true;
+    if (tg.colorScheme === 'light') {
+      document.documentElement.classList.add('theme-light');
+    } else {
+      document.documentElement.classList.remove('theme-light');
+    }
     if (tg.themeParams) {
       const tp = tg.themeParams;
       if (tp.bg_color) document.documentElement.style.setProperty('--bg-primary', tp.bg_color);
@@ -1313,7 +1338,10 @@ function renderDashboard() {
     .sort((a, b) => b.marginPct - a.marginPct).slice(0, 5);
 
   const zeroStock = state.products.filter(p => (p.quantity || 0) === 0);
-  const totalRevenue = state.deliveriesOut.reduce((s, d) => s + (d.sellPrice || 0), 0);
+  const totalRevenue = state.deliveriesOut.filter(d => d.status !== 'Отказ/Возврат').reduce((s, d) => s + (d.sellPrice || 0), 0);
+
+  const returns = state.deliveriesOut.filter(d => d.status === 'Отказ/Возврат');
+  const returnLoss = returns.reduce((s, d) => s + (d.deliveryCost || 0), 0);
 
   let html = `
     <div class="summary-grid">
@@ -1328,6 +1356,7 @@ function renderDashboard() {
       <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--yellow-bg)">🚚</div><div><div class="name">В пути к нам</div><div class="detail">Входящие доставки</div></div></div><div class="right"><div class="amount">${inTransit}</div></div></div>
       <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--green-bg)">🚀</div><div><div class="name">Отправлено</div><div class="detail">Исходящие доставки</div></div></div><div class="right"><div class="amount">${outPending}</div></div></div>
       <div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">💸</div><div><div class="name">Расходы (месяц)</div><div class="detail">${thisMonthExpenses.length} записей</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(totalExpenses)}</div></div></div>
+      ${returns.length > 0 ? `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">🔙</div><div><div class="name">Отказы / Возвраты</div><div class="detail">${returns.length} шт</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(returnLoss)}</div><div class="sub">Потери на доставке</div></div></div>` : ''}
     </div>`;
 
   if (topProducts.length > 0) {
@@ -1438,10 +1467,16 @@ function getFormHTML(type, item) {
         <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
         ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
 
-    case 'deliveryIn':
+    case 'deliveryIn': {
+      const prodOptionsIn = state.products.map(p => `<option value="${p.id}" ${v.productId === p.id ? 'selected' : ''}>${p.name}</option>`).join('');
       return `
-        <div class="form-group"><label class="form-label">Что едет</label>
-          <input class="form-input" name="item" value="${v.item || ''}" placeholder="Название товара" required></div>
+        <div class="form-group"><label class="form-label">Что едет (Товар)</label>
+          <select class="form-select" name="productId" required>
+            <option value="" disabled ${!v.productId ? 'selected' : ''}>Выберите товар из базы</option>
+            ${prodOptionsIn}
+          </select>
+          <div class="form-hint">Если товара нет в списке, сначала добавьте его на вкладке "Склад"</div>
+        </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Количество</label>
             <input class="form-input" name="quantity" type="number" value="${v.quantity || 1}" required></div>
@@ -1461,10 +1496,17 @@ function getFormHTML(type, item) {
         <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
         ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
 
-    case 'deliveryOut':
+    }
+
+    case 'deliveryOut': {
+      const prodOptionsOut = state.products.map(p => `<option value="${p.id}" ${v.productId === p.id ? 'selected' : ''} data-price="${p.sellPrice}">${p.name} (Остаток: ${p.quantity || 0} шт)</option>`).join('');
       return `
         <div class="form-group"><label class="form-label">Товар</label>
-          <input class="form-input" name="item" value="${v.item || ''}" placeholder="Что отправляем" required></div>
+          <select class="form-select" name="productId" required onchange="document.querySelector('input[name=sellPrice]').value = this.options[this.selectedIndex].dataset.price || ''">
+            <option value="" disabled ${!v.productId ? 'selected' : ''}>Выберите товар со склада</option>
+            ${prodOptionsOut}
+          </select>
+        </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Количество</label>
             <input class="form-input" name="quantity" type="number" value="${v.quantity || 1}" required></div>
@@ -1489,6 +1531,7 @@ function getFormHTML(type, item) {
           <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно"></div>
         <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
         ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
+    }
 
     case 'expense':
       return `
@@ -1522,8 +1565,37 @@ document.getElementById('modal-form').addEventListener('submit', (e) => {
   const type = state.editingType;
   const isEdit = !!state.editingItem;
 
+  const product = data.productId ? state.products.find(p => p.id === data.productId) : null;
+  if (product) data.item = product.name; // Keep name for display
+
   if (isEdit) {
     data.updatedAt = new Date().toISOString();
+
+    // Inventory logic for Edits
+    if (type === 'deliveryIn' && product) {
+      const oldStatus = state.editingItem.status;
+      const oldQty = state.editingItem.quantity || 0;
+      const newStatus = data.status;
+      const newQty = data.quantity || 0;
+      let delta = 0;
+      if (oldStatus === 'Доставлено' && newStatus === 'Доставлено') delta = newQty - oldQty;
+      else if (oldStatus !== 'Доставлено' && newStatus === 'Доставлено') delta = newQty;
+      else if (oldStatus === 'Доставлено' && newStatus !== 'Доставлено') delta = -oldQty;
+      product.quantity = (product.quantity || 0) + delta;
+    }
+
+    if (type === 'deliveryOut' && product) {
+      const oldStatus = state.editingItem.status;
+      const oldQty = state.editingItem.quantity || 0;
+      const newStatus = data.status;
+      const newQty = data.quantity || 0;
+      let delta = 0;
+      if (oldStatus !== 'Отказ/Возврат' && newStatus !== 'Отказ/Возврат') delta = oldQty - newQty;
+      else if (oldStatus !== 'Отказ/Возврат' && newStatus === 'Отказ/Возврат') delta = oldQty;
+      else if (oldStatus === 'Отказ/Возврат' && newStatus !== 'Отказ/Возврат') delta = -newQty;
+      product.quantity = (product.quantity || 0) + delta;
+    }
+
     Object.assign(state.editingItem, data);
     lastAddedId = state.editingItem.id;
   } else {
@@ -1531,6 +1603,15 @@ document.getElementById('modal-form').addEventListener('submit', (e) => {
     data.createdAt = new Date().toISOString();
     data.updatedAt = data.createdAt;
     lastAddedId = data.id;
+
+    // Inventory logic for Creation
+    if (type === 'deliveryIn' && data.status === 'Доставлено' && product) {
+      product.quantity = (product.quantity || 0) + (data.quantity || 0);
+    }
+    if (type === 'deliveryOut' && data.status !== 'Отказ/Возврат' && product) {
+      product.quantity = (product.quantity || 0) - (data.quantity || 0);
+    }
+
     switch (type) {
       case 'product': state.products.push(data); break;
       case 'deliveryIn': state.deliveriesIn.push(data); break;
@@ -1565,6 +1646,17 @@ function deleteItem() {
   if (!item) return;
 
   showConfirm('Удалить запись?', 'Это действие нельзя отменить', () => {
+    // Revert inventory
+    const product = item.productId ? state.products.find(p => p.id === item.productId) : null;
+    if (product) {
+      if (type === 'deliveryIn' && item.status === 'Доставлено') {
+        product.quantity = (product.quantity || 0) - (item.quantity || 0);
+      }
+      if (type === 'deliveryOut' && item.status !== 'Отказ/Возврат') {
+        product.quantity = (product.quantity || 0) + (item.quantity || 0);
+      }
+    }
+
     switch (type) {
       case 'product': state.products = state.products.filter(p => p.id !== item.id); break;
       case 'deliveryIn': state.deliveriesIn = state.deliveriesIn.filter(d => d.id !== item.id); break;
