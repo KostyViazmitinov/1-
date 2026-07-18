@@ -409,7 +409,7 @@
       position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-30px) scale(0.9);
       background: var(--green); color: #000;
       padding: 14px 28px; border-radius: 16px; font-size: 16px; font-weight: 600;
-      z-index: 300; opacity: 0; transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 1000; opacity: 0; transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
       pointer-events: none; letter-spacing: -0.2px;
       box-shadow: 0 8px 32px rgba(48, 209, 88, 0.4);
       min-width: 180px; text-align: center;
@@ -938,7 +938,10 @@ document.getElementById('setup-connect-btn').addEventListener('click', async () 
   try {
     const testUrl = `${url.replace(/\/+$/, '')}/stores/${code}/data.json`;
     const resp = await fetch(testUrl);
-    if (!resp.ok) throw new Error('Connection failed');
+    if (!resp.ok) {
+      if (resp.status === 401 || resp.status === 403) throw new Error('Нет доступа (проверьте правила Firebase)');
+      throw new Error(`Ошибка подключения: ${resp.status}`);
+    }
 
     // Save config
     firebaseUrl = url.replace(/\/+$/, '');
@@ -960,13 +963,18 @@ document.getElementById('setup-connect-btn').addEventListener('click', async () 
     hideSetupScreen();
     showToast('🔗 Синхронизация подключена!', false, 'sync');
     haptic('success');
+    
+    btn.textContent = '🔗 Подключить синхронизацию';
+    btn.disabled = false;
   } catch (err) {
-    showToast('❌ Не удалось подключиться', true);
+    showToast('❌ ' + (err.message || 'Не удалось подключиться'), true);
     haptic('error');
+    btn.textContent = '❌ Ошибка подключения';
+    setTimeout(() => {
+      btn.textContent = '🔗 Подключить синхронизацию';
+      btn.disabled = false;
+    }, 2500);
   }
-
-  btn.textContent = '🔗 Подключить синхронизацию';
-  btn.disabled = false;
 });
 
 document.getElementById('setup-skip-btn').addEventListener('click', () => {
