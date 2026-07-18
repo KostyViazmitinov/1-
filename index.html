@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Apple Store Manager</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #000000;
+      --bg-secondary: #1c1c1e;
+      --bg-tertiary: #2c2c2e;
+      --bg-card: #1c1c1e;
+      --text-primary: #ffffff;
+      --text-secondary: #8e8e93;
+      --text-tertiary: #636366;
+      --accent: #0A84FF;
+      --accent-light: rgba(10, 132, 255, 0.15);
+      --green: #30D158;
+      --green-bg: rgba(48, 209, 88, 0.15);
+      --yellow: #FFD60A;
+      --yellow-bg: rgba(255, 214, 10, 0.15);
+      --red: #FF453A;
+      --red-bg: rgba(255, 69, 58, 0.15);
+      --orange: #FF9F0A;
+      --orange-bg: rgba(255, 159, 10, 0.15);
+      --purple: #BF5AF2;
+      --purple-bg: rgba(191, 90, 242, 0.15);
+      --border: rgba(255, 255, 255, 0.08);
+      --shadow: rgba(0, 0, 0, 0.3);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --radius-xs: 8px;
+      --nav-height: 82px;
+      --header-height: 56px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: var(--nav-height);
+      padding-top: var(--header-height);
+    }
+
+    /* === HEADER === */
+    .header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: var(--header-height);
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-title {
+      font-size: 17px; font-weight: 600; letter-spacing: -0.2px;
+    }
+    .header-btn {
+      background: none; border: none; color: var(--accent);
+      font-size: 15px; font-weight: 500; cursor: pointer;
+      padding: 8px; border-radius: 8px; transition: background 0.2s;
+      font-family: inherit;
+    }
+    .header-btn:active { background: var(--accent-light); }
+    .header-btn.icon { font-size: 20px; }
+
+    /* === BOTTOM NAV === */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      height: var(--nav-height);
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      display: flex; align-items: flex-start; justify-content: space-around;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      background: none; border: none; color: var(--text-tertiary);
+      font-size: 10px; font-weight: 500; cursor: pointer;
+      padding: 4px 12px; border-radius: 8px; transition: color 0.2s;
+      font-family: inherit; min-width: 64px;
+    }
+    .nav-item.active { color: var(--accent); }
+    .nav-item svg { width: 24px; height: 24px; fill: currentColor; }
+    .nav-item span { margin-top: 1px; }
+
+    /* === TAB CONTENT === */
+    .tab-content { display: none; padding: 12px 16px 24px; animation: fadeIn 0.25s ease; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* === SUMMARY CARDS === */
+    .summary-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;
+    }
+    .summary-card {
+      background: var(--bg-secondary); border-radius: var(--radius);
+      padding: 14px; border: 1px solid var(--border);
+      transition: transform 0.2s;
+    }
+    .summary-card:active { transform: scale(0.97); }
+    .summary-card .label {
+      font-size: 11px; font-weight: 500; color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .summary-card .value {
+      font-size: 22px; font-weight: 700; letter-spacing: -0.5px;
+    }
+    .summary-card .sub {
+      font-size: 12px; color: var(--text-secondary); margin-top: 2px;
+    }
+    .summary-card.accent { border-color: rgba(10, 132, 255, 0.3); }
+    .summary-card.green { border-color: rgba(48, 209, 88, 0.3); }
+    .summary-card.green .value { color: var(--green); }
+
+    /* === SEARCH BAR === */
+    .search-bar {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .search-input {
+      flex: 1; background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 14px;
+      color: var(--text-primary); font-size: 15px; font-family: inherit;
+      outline: none; transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--text-tertiary); }
+    .filter-btn {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 14px;
+      color: var(--text-secondary); font-size: 14px; cursor: pointer;
+      font-family: inherit; white-space: nowrap; transition: all 0.2s;
+    }
+    .filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+    /* === SEGMENT CONTROL === */
+    .segment-control {
+      display: flex; background: var(--bg-secondary); border-radius: var(--radius-sm);
+      padding: 3px; margin-bottom: 16px; border: 1px solid var(--border);
+    }
+    .segment-btn {
+      flex: 1; padding: 8px 16px; border: none; background: none;
+      border-radius: var(--radius-xs); color: var(--text-secondary);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.25s; font-family: inherit;
+    }
+    .segment-btn.active {
+      background: var(--bg-tertiary); color: var(--text-primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    /* === DATA CARDS === */
+    .data-list { display: flex; flex-direction: column; gap: 8px; }
+    .data-card {
+      background: var(--bg-secondary); border-radius: var(--radius);
+      padding: 14px; border: 1px solid var(--border);
+      transition: all 0.2s; cursor: pointer; position: relative;
+      animation: cardAppear 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    @keyframes cardAppear {
+      from { opacity: 0; transform: translateY(12px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .data-card.highlight {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 16px rgba(10, 132, 255, 0.3);
+    }
+    .data-card:active { transform: scale(0.98); background: var(--bg-tertiary); }
+    .data-card-header {
+      display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;
+    }
+    .data-card-title { font-size: 15px; font-weight: 600; flex: 1; }
+    .data-card-badge {
+      font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+      text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap;
+    }
+    .badge-green { background: var(--green-bg); color: var(--green); }
+    .badge-yellow { background: var(--yellow-bg); color: var(--yellow); }
+    .badge-red { background: var(--red-bg); color: var(--red); }
+    .badge-orange { background: var(--orange-bg); color: var(--orange); }
+    .badge-accent { background: var(--accent-light); color: var(--accent); }
+    .badge-purple { background: var(--purple-bg); color: var(--purple); }
+    .data-card-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 3px 0; font-size: 13px;
+    }
+    .data-card-row .label { color: var(--text-secondary); }
+    .data-card-row .value { font-weight: 500; }
+    .data-card-divider {
+      border: none; border-top: 1px solid var(--border); margin: 8px 0;
+    }
+    .data-card-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);
+    }
+    .data-card-footer .profit { font-weight: 700; font-size: 15px; }
+    .data-card-category {
+      font-size: 11px; color: var(--text-secondary); font-weight: 500;
+      background: var(--bg-tertiary); padding: 2px 8px; border-radius: 4px;
+    }
+
+    /* === EMPTY STATE === */
+    .empty-state {
+      text-align: center; padding: 48px 24px; color: var(--text-secondary);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state .title { font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+    .empty-state .desc { font-size: 14px; line-height: 1.5; }
+
+    /* === FAB === */
+    .fab {
+      position: fixed; bottom: 96px; right: 20px; z-index: 90;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--accent); color: white; border: none;
+      font-size: 28px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(10, 132, 255, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .fab:active { transform: scale(0.9); }
+    .fab:hover { box-shadow: 0 6px 24px rgba(10, 132, 255, 0.6); }
+
+    /* === MODAL === */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);
+      display: none; align-items: flex-end; justify-content: center;
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+    .modal-overlay.active { display: flex; opacity: 1; }
+    .modal-overlay.closing { opacity: 0; }
+    .modal-sheet {
+      background: var(--bg-secondary); border-radius: 20px 20px 0 0;
+      width: 100%; max-width: 500px; max-height: 90vh;
+      overflow-y: auto; padding: 0 20px 34px;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .modal-overlay.active .modal-sheet { transform: translateY(0); }
+    .modal-overlay.closing .modal-sheet { transform: translateY(100%); transition-duration: 0.25s; }
+    .modal-handle {
+      width: 36px; height: 5px; background: var(--text-tertiary);
+      border-radius: 3px; margin: 10px auto 16px; opacity: 0.5;
+    }
+    .modal-title {
+      font-size: 20px; font-weight: 700; margin-bottom: 20px;
+      text-align: center; letter-spacing: -0.3px;
+    }
+
+    /* === FORM === */
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      display: block; font-size: 13px; font-weight: 500;
+      color: var(--text-secondary); margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius-xs); padding: 12px 14px;
+      color: var(--text-primary); font-size: 16px; font-family: inherit;
+      outline: none; transition: border-color 0.2s;
+      -webkit-appearance: none; appearance: none;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--accent);
+    }
+    .form-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238e8e93' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+      padding-right: 36px;
+    }
+    .form-select option { background: var(--bg-tertiary); color: var(--text-primary); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-textarea { resize: vertical; min-height: 60px; }
+
+    .btn {
+      width: 100%; padding: 14px; border: none; border-radius: var(--radius-sm);
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:active { background: #0070E0; transform: scale(0.98); }
+    .btn-danger { background: var(--red); color: white; margin-top: 8px; }
+    .btn-danger:active { background: #E03E34; transform: scale(0.98); }
+    .btn-secondary {
+      background: var(--bg-tertiary); color: var(--text-primary);
+      border: 1px solid var(--border); margin-top: 8px;
+    }
+
+    /* === EXPENSE BARS === */
+    .expense-bars { margin-top: 16px; }
+    .expense-bar-item { margin-bottom: 10px; }
+    .expense-bar-header {
+      display: flex; justify-content: space-between; font-size: 13px;
+      margin-bottom: 4px;
+    }
+    .expense-bar-header .cat { font-weight: 500; }
+    .expense-bar-header .amount { color: var(--text-secondary); }
+    .expense-bar-track {
+      height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;
+    }
+    .expense-bar-fill {
+      height: 100%; border-radius: 4px; transition: width 0.5s ease;
+    }
+
+    /* === DASHBOARD SECTION === */
+    .dash-section { margin-bottom: 20px; }
+    .dash-section-title {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 10px; padding-left: 2px;
+    }
+    .dash-item {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--bg-secondary); border-radius: var(--radius-sm);
+      padding: 12px 14px; margin-bottom: 6px; border: 1px solid var(--border);
+    }
+    .dash-item .left { display: flex; align-items: center; gap: 10px; }
+    .dash-item .icon-circle {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .dash-item .name { font-size: 14px; font-weight: 500; }
+    .dash-item .detail { font-size: 12px; color: var(--text-secondary); }
+    .dash-item .right { text-align: right; }
+    .dash-item .amount { font-size: 15px; font-weight: 600; }
+    .dash-item .sub { font-size: 12px; color: var(--text-secondary); }
+
+    /* === TOAST === */
+    .toast {
+      position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-30px) scale(0.9);
+      background: var(--green); color: #000;
+      padding: 14px 28px; border-radius: 16px; font-size: 16px; font-weight: 600;
+      z-index: 300; opacity: 0; transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none; letter-spacing: -0.2px;
+      box-shadow: 0 8px 32px rgba(48, 209, 88, 0.4);
+      min-width: 180px; text-align: center;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    .toast.toast-delete { background: var(--red); box-shadow: 0 8px 32px rgba(255, 69, 58, 0.4); color: #fff; }
+
+    /* === FILTER CHIPS === */
+    .filter-chips {
+      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px;
+      margin-bottom: 8px; scrollbar-width: none;
+    }
+    .filter-chips::-webkit-scrollbar { display: none; }
+    .chip {
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+      border: 1px solid var(--border); background: var(--bg-secondary);
+      color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .chip.active { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+    /* === CONFIRM DIALOG === */
+    .confirm-dialog {
+      position: fixed; inset: 0; z-index: 250;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center;
+    }
+    .confirm-dialog.active { display: flex; }
+    .confirm-box {
+      background: var(--bg-secondary); border-radius: var(--radius);
+      padding: 24px; max-width: 300px; width: 90%; text-align: center;
+      border: 1px solid var(--border);
+      animation: scaleIn 0.2s ease;
+    }
+    @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .confirm-box .title { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+    .confirm-box .msg { font-size: 14px; color: var(--text-secondary); margin-bottom: 20px; }
+    .confirm-actions { display: flex; gap: 10px; }
+    .confirm-actions .btn { flex: 1; padding: 12px; font-size: 15px; margin: 0; }
+
+    /* === UTILITY === */
+    .text-green { color: var(--green); }
+    .text-yellow { color: var(--yellow); }
+    .text-red { color: var(--red); }
+    .text-accent { color: var(--accent); }
+    .text-secondary { color: var(--text-secondary); }
+    .mt-8 { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .mb-16 { margin-bottom: 16px; }
+
+    /* === SCROLLBAR === */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <button class="header-btn icon" id="exportBtn" title="Экспорт">📤</button>
+    <h1 class="header-title"> Apple Store</h1>
+    <button class="header-btn icon" id="importBtn" title="Импорт">📥</button>
+  </header>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ========== TAB: СКЛАД ========== -->
+  <div class="tab-content active" id="tab-products">
+    <div class="summary-grid" id="products-summary"></div>
+    <div class="search-bar">
+      <input type="text" class="search-input" id="product-search" placeholder="Поиск товаров...">
+    </div>
+    <div class="filter-chips" id="product-filters"></div>
+    <div class="data-list" id="products-list"></div>
+  </div>
+
+  <!-- ========== TAB: ДОСТАВКИ ========== -->
+  <div class="tab-content" id="tab-deliveries">
+    <div class="segment-control">
+      <button class="segment-btn active" data-segment="incoming">📦 Входящие</button>
+      <button class="segment-btn" data-segment="outgoing">🚀 Исходящие</button>
+    </div>
+    <div class="summary-grid" id="deliveries-summary"></div>
+    <div class="data-list" id="deliveries-list"></div>
+  </div>
+
+  <!-- ========== TAB: РАСХОДЫ ========== -->
+  <div class="tab-content" id="tab-expenses">
+    <div class="summary-grid" id="expenses-summary"></div>
+    <div class="filter-chips" id="expense-filters"></div>
+    <div class="data-list" id="expenses-list"></div>
+    <div class="expense-bars" id="expense-bars"></div>
+  </div>
+
+  <!-- ========== TAB: ДАШБОРД ========== -->
+  <div class="tab-content" id="tab-dashboard">
+    <div id="dashboard-content"></div>
+  </div>
+
+  <!-- FAB -->
+  <button class="fab" id="fab">+</button>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-tab="products">
+      <svg viewBox="0 0 24 24"><path d="M20 7H4c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 8H4V9h16v6zM6 4h12v2H6z"/></svg>
+      <span>Склад</span>
+    </button>
+    <button class="nav-item" data-tab="deliveries">
+      <svg viewBox="0 0 24 24"><path d="M18 18.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5zm1.5-9H17V12h4.46L19.5 9.5zM6 18.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5zM20 8l3 4v5h-2c0 1.66-1.34 3-3 3s-3-1.34-3-3H9c0 1.66-1.34 3-3 3s-3-1.34-3-3H1V6c0-1.11.89-2 2-2h14v4h3zM3 6v9h.76c.55-.61 1.35-1 2.24-1s1.69.39 2.24 1H15V6H3z"/></svg>
+      <span>Доставки</span>
+    </button>
+    <button class="nav-item" data-tab="expenses">
+      <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+      <span>Расходы</span>
+    </button>
+    <button class="nav-item" data-tab="dashboard">
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/></svg>
+      <span>Дашборд</span>
+    </button>
+  </nav>
+
+  <!-- MODAL -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal-sheet" id="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="modal-title">Добавить</div>
+      <form id="modal-form"></form>
+    </div>
+  </div>
+
+  <!-- CONFIRM DIALOG -->
+  <div class="confirm-dialog" id="confirm-dialog">
+    <div class="confirm-box">
+      <div class="title" id="confirm-title">Удалить?</div>
+      <div class="msg" id="confirm-msg">Это действие нельзя отменить</div>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirm-cancel">Отмена</button>
+        <button class="btn btn-danger" id="confirm-ok" style="margin:0">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HIDDEN FILE INPUT FOR IMPORT -->
+  <input type="file" id="fileInput" accept=".json" style="display:none">
+
+<script>
+// ============================================================
+// DATA LAYER
+// ============================================================
+const STORAGE_KEYS = {
+  products: 'asm_products',
+  deliveriesIn: 'asm_deliveries_in',
+  deliveriesOut: 'asm_deliveries_out',
+  expenses: 'asm_expenses',
+};
+
+const CATEGORIES = ['Все', 'Чехлы', 'Стёкла', 'Зарядки', 'Кабели', 'Наушники', 'AirTag', 'Ремешки', 'Другое'];
+const EXPENSE_CATEGORIES = ['Все', 'Реклама', 'Объявления', 'Упаковка', 'Доставка', 'Связь', 'Аренда', 'Закупка товара', 'Другое'];
+const DELIVERY_STATUSES_IN = ['В пути', 'На таможне', 'Доставлено'];
+const DELIVERY_STATUSES_OUT = ['Отправлено', 'В пути', 'Доставлено', 'Получено'];
+const DELIVERY_TYPES = ['Новая Почта', 'Укрпочта', 'Курьер', 'Личная встреча', 'Meest', 'Другое'];
+
+const EXPENSE_COLORS = {
+  'Реклама': 'var(--accent)',
+  'Объявления': 'var(--purple)',
+  'Упаковка': 'var(--orange)',
+  'Доставка': 'var(--yellow)',
+  'Связь': 'var(--green)',
+  'Аренда': 'var(--red)',
+  'Закупка товара': '#5AC8FA',
+  'Другое': 'var(--text-tertiary)',
+};
+
+// Telegram WebApp
+const tg = window.Telegram?.WebApp;
+let isTelegram = false;
+
+function initTelegram() {
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    tg.enableClosingConfirmation();
+    isTelegram = true;
+    // Apply Telegram theme
+    if (tg.themeParams) {
+      const tp = tg.themeParams;
+      if (tp.bg_color) document.documentElement.style.setProperty('--bg-primary', tp.bg_color);
+      if (tp.secondary_bg_color) {
+        document.documentElement.style.setProperty('--bg-secondary', tp.secondary_bg_color);
+      }
+      if (tp.text_color) document.documentElement.style.setProperty('--text-primary', tp.text_color);
+      if (tp.hint_color) document.documentElement.style.setProperty('--text-secondary', tp.hint_color);
+      if (tp.button_color) document.documentElement.style.setProperty('--accent', tp.button_color);
+    }
+  }
+}
+
+function haptic(type = 'light') {
+  if (tg?.HapticFeedback) {
+    tg.HapticFeedback.impactOccurred(type);
+  }
+}
+
+// Storage
+function loadData(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key)) || [];
+  } catch { return []; }
+}
+
+function saveData(key, data) {
+  localStorage.setItem(key, JSON.stringify(data));
+  // Also try Telegram CloudStorage
+  if (tg?.CloudStorage) {
+    tg.CloudStorage.setItem(key, JSON.stringify(data));
+  }
+}
+
+function loadAllFromCloud(callback) {
+  if (tg?.CloudStorage) {
+    const keys = Object.values(STORAGE_KEYS);
+    tg.CloudStorage.getItems(keys, (err, result) => {
+      if (!err && result) {
+        for (const [key, val] of Object.entries(result)) {
+          if (val) {
+            try {
+              const parsed = JSON.parse(val);
+              if (parsed.length > 0) {
+                const local = loadData(key);
+                if (local.length === 0) {
+                  localStorage.setItem(key, val);
+                }
+              }
+            } catch {}
+          }
+        }
+      }
+      if (callback) callback();
+    });
+  } else {
+    if (callback) callback();
+  }
+}
+
+// State
+let state = {
+  products: [],
+  deliveriesIn: [],
+  deliveriesOut: [],
+  expenses: [],
+  currentTab: 'products',
+  deliverySegment: 'incoming',
+  productFilter: 'Все',
+  expenseFilter: 'Все',
+  searchQuery: '',
+  editingItem: null,
+  editingType: null,
+};
+
+function loadState() {
+  state.products = loadData(STORAGE_KEYS.products);
+  state.deliveriesIn = loadData(STORAGE_KEYS.deliveriesIn);
+  state.deliveriesOut = loadData(STORAGE_KEYS.deliveriesOut);
+  state.expenses = loadData(STORAGE_KEYS.expenses);
+}
+
+function saveState() {
+  saveData(STORAGE_KEYS.products, state.products);
+  saveData(STORAGE_KEYS.deliveriesIn, state.deliveriesIn);
+  saveData(STORAGE_KEYS.deliveriesOut, state.deliveriesOut);
+  saveData(STORAGE_KEYS.expenses, state.expenses);
+}
+
+// ============================================================
+// UTILITY
+// ============================================================
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function fmt(n) {
+  return new Intl.NumberFormat('uk-UA').format(Math.round(n));
+}
+
+function fmtCurrency(n) {
+  return fmt(n) + ' ₴';
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const date = new Date(d);
+  return date.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function showToast(msg, isDelete) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('toast-delete', 'show');
+  if (isDelete) t.classList.add('toast-delete');
+  // Force reflow so the class re-triggers transition
+  void t.offsetWidth;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function getMarginClass(pct) {
+  if (pct >= 30) return 'text-green';
+  if (pct >= 15) return 'text-yellow';
+  return 'text-red';
+}
+
+function getMarginBadge(pct) {
+  if (pct >= 30) return 'badge-green';
+  if (pct >= 15) return 'badge-yellow';
+  return 'badge-red';
+}
+
+function getStatusBadge(status) {
+  const map = {
+    'В пути': 'badge-yellow', 'На таможне': 'badge-orange', 'Доставлено': 'badge-green',
+    'Отправлено': 'badge-accent', 'Получено': 'badge-green',
+  };
+  return map[status] || 'badge-accent';
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function switchTab(tab) {
+  state.currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  haptic('light');
+  renderCurrentTab();
+}
+
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// Segment control
+document.querySelectorAll('.segment-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.deliverySegment = btn.dataset.segment;
+    document.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    haptic('light');
+    renderDeliveries();
+  });
+});
+
+function renderCurrentTab() {
+  switch (state.currentTab) {
+    case 'products': renderProducts(); break;
+    case 'deliveries': renderDeliveries(); break;
+    case 'expenses': renderExpenses(); break;
+    case 'dashboard': renderDashboard(); break;
+  }
+}
+
+// ============================================================
+// PRODUCTS
+// ============================================================
+function renderProducts() {
+  // Summary
+  const total = state.products.reduce((acc, p) => {
+    const qty = p.quantity || 0;
+    acc.invested += p.buyPrice * qty;
+    acc.sellTotal += p.sellPrice * qty;
+    acc.profit += (p.sellPrice - p.buyPrice) * qty;
+    acc.units += qty;
+    return acc;
+  }, { invested: 0, sellTotal: 0, profit: 0, units: 0 });
+
+  document.getElementById('products-summary').innerHTML = `
+    <div class="summary-card">
+      <div class="label">💰 Вложено</div>
+      <div class="value">${fmtCurrency(total.invested)}</div>
+      <div class="sub">${state.products.length} позиций</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">📈 На продажу</div>
+      <div class="value">${fmtCurrency(total.sellTotal)}</div>
+      <div class="sub">${fmt(total.units)} шт</div>
+    </div>
+    <div class="summary-card green">
+      <div class="label">🎯 Прибыль</div>
+      <div class="value">${fmtCurrency(total.profit)}</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">📦 На складе</div>
+      <div class="value">${fmt(total.units)} шт</div>
+    </div>
+  `;
+
+  // Filters
+  const filtersEl = document.getElementById('product-filters');
+  filtersEl.innerHTML = CATEGORIES.map(cat =>
+    `<button class="chip ${state.productFilter === cat ? 'active' : ''}" data-filter="${cat}">${cat}</button>`
+  ).join('');
+  filtersEl.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      state.productFilter = chip.dataset.filter;
+      haptic('light');
+      renderProducts();
+    });
+  });
+
+  // List
+  let filtered = [...state.products];
+  if (state.productFilter !== 'Все') {
+    filtered = filtered.filter(p => p.category === state.productFilter);
+  }
+  if (state.searchQuery) {
+    const q = state.searchQuery.toLowerCase();
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
+  }
+
+  const listEl = document.getElementById('products-list');
+  if (filtered.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📦</div>
+        <div class="title">Товаров пока нет</div>
+        <div class="desc">Нажмите + чтобы добавить первый товар</div>
+      </div>`;
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(p => {
+    const margin = p.buyPrice > 0 ? ((p.sellPrice - p.buyPrice) / p.buyPrice * 100) : 0;
+    const marginAbs = p.sellPrice - p.buyPrice;
+    const totalProfit = marginAbs * (p.quantity || 0);
+    return `
+      <div class="data-card" data-id="${p.id}" data-type="product">
+        <div class="data-card-header">
+          <div class="data-card-title">${p.name}</div>
+          <span class="data-card-badge ${getMarginBadge(margin)}">${margin.toFixed(0)}%</span>
+        </div>
+        <div class="data-card-category">${p.category}</div>
+        <div class="data-card-row mt-8">
+          <span class="label">Закупка</span>
+          <span class="value">${fmtCurrency(p.buyPrice)}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Продажа</span>
+          <span class="value">${fmtCurrency(p.sellPrice)}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Маржа</span>
+          <span class="value ${getMarginClass(margin)}">${fmtCurrency(marginAbs)}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">На складе</span>
+          <span class="value">${p.quantity || 0} шт</span>
+        </div>
+        <div class="data-card-footer">
+          <span class="label">Потенц. прибыль</span>
+          <span class="profit ${getMarginClass(margin)}">${fmtCurrency(totalProfit)}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Card clicks
+  listEl.querySelectorAll('.data-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      const item = state.products.find(p => p.id === id);
+      if (item) openEditModal('product', item);
+    });
+  });
+}
+
+// ============================================================
+// DELIVERIES
+// ============================================================
+function renderDeliveries() {
+  const isIncoming = state.deliverySegment === 'incoming';
+  const items = isIncoming ? state.deliveriesIn : state.deliveriesOut;
+
+  // Summary
+  const inTransit = state.deliveriesIn.filter(d => d.status !== 'Доставлено').length;
+  const shipped = state.deliveriesOut.filter(d => d.status !== 'Получено').length;
+  const totalInValue = state.deliveriesIn.reduce((s, d) => s + (d.cost || 0), 0);
+  const totalOutRevenue = state.deliveriesOut.reduce((s, d) => s + (d.sellPrice || 0), 0);
+
+  document.getElementById('deliveries-summary').innerHTML = `
+    <div class="summary-card">
+      <div class="label">📦 В пути к нам</div>
+      <div class="value">${inTransit}</div>
+      <div class="sub">${fmtCurrency(totalInValue)}</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">🚀 Отправлено</div>
+      <div class="value">${shipped}</div>
+      <div class="sub">${fmtCurrency(totalOutRevenue)}</div>
+    </div>
+  `;
+
+  const listEl = document.getElementById('deliveries-list');
+  if (items.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">${isIncoming ? '📦' : '🚀'}</div>
+        <div class="title">${isIncoming ? 'Нет входящих доставок' : 'Нет исходящих доставок'}</div>
+        <div class="desc">Нажмите + чтобы добавить</div>
+      </div>`;
+    return;
+  }
+
+  if (isIncoming) {
+    listEl.innerHTML = items.map(d => `
+      <div class="data-card" data-id="${d.id}" data-type="deliveryIn">
+        <div class="data-card-header">
+          <div class="data-card-title">${d.item}</div>
+          <span class="data-card-badge ${getStatusBadge(d.status)}">${d.status}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Количество</span>
+          <span class="value">${d.quantity || 1} шт</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Поставщик</span>
+          <span class="value">${d.supplier || '—'}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Ожидаемая дата</span>
+          <span class="value">${fmtDate(d.expectedDate)}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Стоимость</span>
+          <span class="value">${fmtCurrency(d.cost || 0)}</span>
+        </div>
+        ${d.trackNumber ? `<div class="data-card-row"><span class="label">Трек</span><span class="value" style="font-size:12px">${d.trackNumber}</span></div>` : ''}
+      </div>
+    `).join('');
+  } else {
+    listEl.innerHTML = items.map(d => `
+      <div class="data-card" data-id="${d.id}" data-type="deliveryOut">
+        <div class="data-card-header">
+          <div class="data-card-title">${d.item}</div>
+          <span class="data-card-badge ${getStatusBadge(d.status)}">${d.status}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Клиент</span>
+          <span class="value">${d.client || '—'}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Способ</span>
+          <span class="value">${d.type || '—'}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Дата</span>
+          <span class="value">${fmtDate(d.date)}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Кол-во</span>
+          <span class="value">${d.quantity || 1} шт</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">Доставка</span>
+          <span class="value">${fmtCurrency(d.deliveryCost || 0)}</span>
+        </div>
+        <div class="data-card-footer">
+          <span class="label">Продажа</span>
+          <span class="profit text-green">${fmtCurrency(d.sellPrice || 0)}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  listEl.querySelectorAll('.data-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      const type = card.dataset.type;
+      const arr = type === 'deliveryIn' ? state.deliveriesIn : state.deliveriesOut;
+      const item = arr.find(d => d.id === id);
+      if (item) openEditModal(type, item);
+    });
+  });
+}
+
+// ============================================================
+// EXPENSES
+// ============================================================
+function renderExpenses() {
+  const now = new Date();
+  const thisMonth = state.expenses.filter(e => {
+    const d = new Date(e.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const lastMonth = state.expenses.filter(e => {
+    const d = new Date(e.date);
+    const lm = new Date(now.getFullYear(), now.getMonth() - 1);
+    return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear();
+  });
+
+  const thisTotal = thisMonth.reduce((s, e) => s + (e.amount || 0), 0);
+  const lastTotal = lastMonth.reduce((s, e) => s + (e.amount || 0), 0);
+  const diff = lastTotal > 0 ? ((thisTotal - lastTotal) / lastTotal * 100) : 0;
+
+  document.getElementById('expenses-summary').innerHTML = `
+    <div class="summary-card">
+      <div class="label">💸 Этот месяц</div>
+      <div class="value">${fmtCurrency(thisTotal)}</div>
+      <div class="sub">${thisMonth.length} записей</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">📅 Прошлый месяц</div>
+      <div class="value">${fmtCurrency(lastTotal)}</div>
+      <div class="sub">${diff !== 0 ? (diff > 0 ? '↑' : '↓') + ' ' + Math.abs(diff).toFixed(0) + '%' : '—'}</div>
+    </div>
+  `;
+
+  // Filters
+  const filtersEl = document.getElementById('expense-filters');
+  filtersEl.innerHTML = EXPENSE_CATEGORIES.map(cat =>
+    `<button class="chip ${state.expenseFilter === cat ? 'active' : ''}" data-filter="${cat}">${cat}</button>`
+  ).join('');
+  filtersEl.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      state.expenseFilter = chip.dataset.filter;
+      haptic('light');
+      renderExpenses();
+    });
+  });
+
+  // List
+  let filtered = [...state.expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+  if (state.expenseFilter !== 'Все') {
+    filtered = filtered.filter(e => e.category === state.expenseFilter);
+  }
+
+  const listEl = document.getElementById('expenses-list');
+  if (filtered.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">💸</div>
+        <div class="title">Расходов пока нет</div>
+        <div class="desc">Нажмите + чтобы добавить расход</div>
+      </div>`;
+  } else {
+    listEl.innerHTML = filtered.map(e => `
+      <div class="data-card" data-id="${e.id}" data-type="expense">
+        <div class="data-card-header">
+          <div class="data-card-title">${e.description || e.category}</div>
+          <span class="data-card-badge badge-red">${fmtCurrency(e.amount)}</span>
+        </div>
+        <div class="data-card-row">
+          <span class="label">${e.category}</span>
+          <span class="value text-secondary">${fmtDate(e.date)}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  listEl.querySelectorAll('.data-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      const item = state.expenses.find(e => e.id === id);
+      if (item) openEditModal('expense', item);
+    });
+  });
+
+  // Expense bars
+  const barsEl = document.getElementById('expense-bars');
+  const byCategory = {};
+  thisMonth.forEach(e => {
+    if (!byCategory[e.category]) byCategory[e.category] = 0;
+    byCategory[e.category] += e.amount || 0;
+  });
+  const maxCat = Math.max(...Object.values(byCategory), 1);
+
+  if (Object.keys(byCategory).length > 0) {
+    barsEl.innerHTML = '<div class="dash-section-title mt-16">Расходы по категориям (этот месяц)</div>' +
+      Object.entries(byCategory)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat, amt]) => `
+          <div class="expense-bar-item">
+            <div class="expense-bar-header">
+              <span class="cat">${cat}</span>
+              <span class="amount">${fmtCurrency(amt)}</span>
+            </div>
+            <div class="expense-bar-track">
+              <div class="expense-bar-fill" style="width:${(amt / maxCat * 100).toFixed(1)}%;background:${EXPENSE_COLORS[cat] || 'var(--accent)'}"></div>
+            </div>
+          </div>
+        `).join('');
+  } else {
+    barsEl.innerHTML = '';
+  }
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard() {
+  const el = document.getElementById('dashboard-content');
+  const now = new Date();
+
+  // Finance
+  const totalInvested = state.products.reduce((s, p) => s + p.buyPrice * (p.quantity || 0), 0);
+  const totalSell = state.products.reduce((s, p) => s + p.sellPrice * (p.quantity || 0), 0);
+  const totalProfit = totalSell - totalInvested;
+  const totalUnits = state.products.reduce((s, p) => s + (p.quantity || 0), 0);
+
+  // Expenses this month
+  const thisMonthExpenses = state.expenses.filter(e => {
+    const d = new Date(e.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const totalExpenses = thisMonthExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+
+  // Deliveries
+  const inTransit = state.deliveriesIn.filter(d => d.status !== 'Доставлено').length;
+  const outPending = state.deliveriesOut.filter(d => d.status !== 'Получено').length;
+
+  // Top products by margin
+  const topProducts = [...state.products]
+    .filter(p => p.buyPrice > 0)
+    .map(p => ({ ...p, marginPct: ((p.sellPrice - p.buyPrice) / p.buyPrice * 100) }))
+    .sort((a, b) => b.marginPct - a.marginPct)
+    .slice(0, 5);
+
+  // Zero stock
+  const zeroStock = state.products.filter(p => (p.quantity || 0) === 0);
+
+  // Revenue from outgoing
+  const totalRevenue = state.deliveriesOut.reduce((s, d) => s + (d.sellPrice || 0), 0);
+
+  let html = `
+    <div class="summary-grid">
+      <div class="summary-card accent">
+        <div class="label">💰 Вложено</div>
+        <div class="value">${fmtCurrency(totalInvested)}</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">📈 На продажу</div>
+        <div class="value">${fmtCurrency(totalSell)}</div>
+      </div>
+      <div class="summary-card green">
+        <div class="label">🎯 Потенц. прибыль</div>
+        <div class="value">${fmtCurrency(totalProfit)}</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">💵 Реализовано</div>
+        <div class="value">${fmtCurrency(totalRevenue)}</div>
+      </div>
+    </div>
+
+    <div class="dash-section">
+      <div class="dash-section-title">📊 Обзор</div>
+      <div class="dash-item">
+        <div class="left">
+          <div class="icon-circle" style="background:var(--accent-light)">📦</div>
+          <div>
+            <div class="name">Товары на складе</div>
+            <div class="detail">${state.products.length} позиций</div>
+          </div>
+        </div>
+        <div class="right">
+          <div class="amount">${fmt(totalUnits)} шт</div>
+        </div>
+      </div>
+      <div class="dash-item">
+        <div class="left">
+          <div class="icon-circle" style="background:var(--yellow-bg)">🚚</div>
+          <div>
+            <div class="name">В пути к нам</div>
+            <div class="detail">Входящие доставки</div>
+          </div>
+        </div>
+        <div class="right">
+          <div class="amount">${inTransit}</div>
+        </div>
+      </div>
+      <div class="dash-item">
+        <div class="left">
+          <div class="icon-circle" style="background:var(--green-bg)">🚀</div>
+          <div>
+            <div class="name">Отправлено</div>
+            <div class="detail">Исходящие доставки</div>
+          </div>
+        </div>
+        <div class="right">
+          <div class="amount">${outPending}</div>
+        </div>
+      </div>
+      <div class="dash-item">
+        <div class="left">
+          <div class="icon-circle" style="background:var(--red-bg)">💸</div>
+          <div>
+            <div class="name">Расходы (этот месяц)</div>
+            <div class="detail">${thisMonthExpenses.length} записей</div>
+          </div>
+        </div>
+        <div class="right">
+          <div class="amount text-red">${fmtCurrency(totalExpenses)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (topProducts.length > 0) {
+    html += `<div class="dash-section"><div class="dash-section-title">🏆 Топ по маржинальности</div>`;
+    topProducts.forEach((p, i) => {
+      html += `
+        <div class="dash-item">
+          <div class="left">
+            <div class="icon-circle" style="background:var(--bg-tertiary);font-size:14px;font-weight:700">${i + 1}</div>
+            <div>
+              <div class="name">${p.name}</div>
+              <div class="detail">${p.category} · ${p.quantity || 0} шт</div>
+            </div>
+          </div>
+          <div class="right">
+            <div class="amount ${getMarginClass(p.marginPct)}">${p.marginPct.toFixed(0)}%</div>
+            <div class="sub">${fmtCurrency(p.sellPrice - p.buyPrice)}/шт</div>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (zeroStock.length > 0) {
+    html += `<div class="dash-section"><div class="dash-section-title">⚠️ Нулевой остаток — пора заказывать</div>`;
+    zeroStock.forEach(p => {
+      html += `
+        <div class="dash-item">
+          <div class="left">
+            <div class="icon-circle" style="background:var(--red-bg)">⚠️</div>
+            <div>
+              <div class="name">${p.name}</div>
+              <div class="detail">${p.category}</div>
+            </div>
+          </div>
+          <div class="right">
+            <div class="amount text-red">0 шт</div>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function openModal() {
+  const modal = document.getElementById('modal');
+  modal.style.display = 'flex';
+  // Force reflow before adding active class so transition plays
+  void modal.offsetWidth;
+  modal.classList.add('active');
+  modal.classList.remove('closing');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(callback) {
+  const modal = document.getElementById('modal');
+  modal.classList.add('closing');
+  modal.classList.remove('active');
+  state.editingItem = null;
+  state.editingType = null;
+  setTimeout(() => {
+    modal.classList.remove('closing');
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+    if (callback) callback();
+  }, 280);
+}
+
+document.getElementById('modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+function openAddModal() {
+  const type = getAddTypeForTab();
+  state.editingItem = null;
+  state.editingType = type;
+
+  const title = {
+    product: 'Добавить товар',
+    deliveryIn: 'Входящая доставка',
+    deliveryOut: 'Исходящая доставка',
+    expense: 'Добавить расход',
+  }[type];
+
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-form').innerHTML = getFormHTML(type, null);
+  openModal();
+  haptic('medium');
+}
+
+function openEditModal(type, item) {
+  state.editingItem = item;
+  state.editingType = type;
+
+  const title = {
+    product: 'Редактировать товар',
+    deliveryIn: 'Входящая доставка',
+    deliveryOut: 'Исходящая доставка',
+    expense: 'Редактировать расход',
+  }[type];
+
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-form').innerHTML = getFormHTML(type, item);
+  openModal();
+  haptic('medium');
+}
+
+function getAddTypeForTab() {
+  switch (state.currentTab) {
+    case 'products': return 'product';
+    case 'deliveries': return state.deliverySegment === 'incoming' ? 'deliveryIn' : 'deliveryOut';
+    case 'expenses': return 'expense';
+    default: return 'product';
+  }
+}
+
+function getFormHTML(type, item) {
+  const v = item || {};
+  const today = new Date().toISOString().split('T')[0];
+
+  switch (type) {
+    case 'product':
+      return `
+        <div class="form-group">
+          <label class="form-label">Наименование</label>
+          <input class="form-input" name="name" value="${v.name || ''}" placeholder="Чехол iPhone 15 Pro Max" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Категория</label>
+          <select class="form-select" name="category">
+            ${CATEGORIES.filter(c => c !== 'Все').map(c => `<option value="${c}" ${v.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Цена закупки ₴</label>
+            <input class="form-input" name="buyPrice" type="number" step="0.01" value="${v.buyPrice || ''}" placeholder="0" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Цена продажи ₴</label>
+            <input class="form-input" name="sellPrice" type="number" step="0.01" value="${v.sellPrice || ''}" placeholder="0" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Количество</label>
+          <input class="form-input" name="quantity" type="number" value="${v.quantity || 0}" placeholder="0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Примечание</label>
+          <input class="form-input" name="note" value="${v.note || ''}" placeholder="Необязательно">
+        </div>
+        <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
+        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}
+      `;
+
+    case 'deliveryIn':
+      return `
+        <div class="form-group">
+          <label class="form-label">Что едет</label>
+          <input class="form-input" name="item" value="${v.item || ''}" placeholder="Название товара" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Количество</label>
+            <input class="form-input" name="quantity" type="number" value="${v.quantity || 1}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Стоимость ₴</label>
+            <input class="form-input" name="cost" type="number" step="0.01" value="${v.cost || ''}" placeholder="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Поставщик</label>
+          <input class="form-input" name="supplier" value="${v.supplier || ''}" placeholder="AliExpress, поставщик...">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Ожидаемая дата</label>
+            <input class="form-input" name="expectedDate" type="date" value="${v.expectedDate || ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Статус</label>
+            <select class="form-select" name="status">
+              ${DELIVERY_STATUSES_IN.map(s => `<option value="${s}" ${v.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Трек-номер</label>
+          <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно">
+        </div>
+        <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
+        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}
+      `;
+
+    case 'deliveryOut':
+      return `
+        <div class="form-group">
+          <label class="form-label">Товар</label>
+          <input class="form-input" name="item" value="${v.item || ''}" placeholder="Что отправляем" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Количество</label>
+            <input class="form-input" name="quantity" type="number" value="${v.quantity || 1}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Цена продажи ₴</label>
+            <input class="form-input" name="sellPrice" type="number" step="0.01" value="${v.sellPrice || ''}" placeholder="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Клиент</label>
+          <input class="form-input" name="client" value="${v.client || ''}" placeholder="Имя или ник">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Способ</label>
+            <select class="form-select" name="type">
+              ${DELIVERY_TYPES.map(t => `<option value="${t}" ${v.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Стоим. доставки ₴</label>
+            <input class="form-input" name="deliveryCost" type="number" step="0.01" value="${v.deliveryCost || 0}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Дата</label>
+            <input class="form-input" name="date" type="date" value="${v.date || today}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Статус</label>
+            <select class="form-select" name="status">
+              ${DELIVERY_STATUSES_OUT.map(s => `<option value="${s}" ${v.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Трек-номер</label>
+          <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно">
+        </div>
+        <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
+        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}
+      `;
+
+    case 'expense':
+      return `
+        <div class="form-group">
+          <label class="form-label">Дата</label>
+          <input class="form-input" name="date" type="date" value="${v.date || today}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Категория</label>
+          <select class="form-select" name="category">
+            ${EXPENSE_CATEGORIES.filter(c => c !== 'Все').map(c => `<option value="${c}" ${v.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Описание</label>
+          <input class="form-input" name="description" value="${v.description || ''}" placeholder="Что именно" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Сумма ₴</label>
+          <input class="form-input" name="amount" type="number" step="0.01" value="${v.amount || ''}" placeholder="0" required>
+        </div>
+        <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
+        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}
+      `;
+  }
+}
+
+// Form submit
+let lastAddedId = null;
+
+document.getElementById('modal-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const fd = new FormData(form);
+  const data = Object.fromEntries(fd.entries());
+
+  // Convert numbers
+  ['buyPrice', 'sellPrice', 'quantity', 'cost', 'amount', 'deliveryCost'].forEach(k => {
+    if (data[k] !== undefined) data[k] = parseFloat(data[k]) || 0;
+  });
+
+  const type = state.editingType;
+  const isEdit = !!state.editingItem;
+
+  if (isEdit) {
+    Object.assign(state.editingItem, data);
+    lastAddedId = state.editingItem.id;
+  } else {
+    data.id = genId();
+    data.createdAt = new Date().toISOString();
+    lastAddedId = data.id;
+    switch (type) {
+      case 'product': state.products.push(data); break;
+      case 'deliveryIn': state.deliveriesIn.push(data); break;
+      case 'deliveryOut': state.deliveriesOut.push(data); break;
+      case 'expense': state.expenses.push(data); break;
+    }
+  }
+
+  saveState();
+  haptic('success');
+
+  // Animate modal close, then re-render with highlight
+  closeModal(() => {
+    renderCurrentTab();
+    showToast(isEdit ? '✅ Сохранено' : '✅ Добавлено');
+    // Scroll to new card and highlight
+    setTimeout(() => {
+      const card = document.querySelector(`[data-id="${lastAddedId}"]`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('highlight');
+        setTimeout(() => card.classList.remove('highlight'), 1500);
+      }
+    }, 100);
+  });
+});
+
+// Delete
+function deleteItem() {
+  const type = state.editingType;
+  const item = state.editingItem;
+  if (!item) return;
+
+  showConfirm('Удалить запись?', 'Это действие нельзя отменить', () => {
+    switch (type) {
+      case 'product': state.products = state.products.filter(p => p.id !== item.id); break;
+      case 'deliveryIn': state.deliveriesIn = state.deliveriesIn.filter(d => d.id !== item.id); break;
+      case 'deliveryOut': state.deliveriesOut = state.deliveriesOut.filter(d => d.id !== item.id); break;
+      case 'expense': state.expenses = state.expenses.filter(e => e.id !== item.id); break;
+    }
+    saveState();
+    haptic('heavy');
+    closeModal(() => {
+      renderCurrentTab();
+      showToast('🗑 Удалено', true);
+    });
+  });
+}
+
+// Confirm dialog
+let confirmCallback = null;
+
+function showConfirm(title, msg, onOk) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  document.getElementById('confirm-dialog').classList.add('active');
+  confirmCallback = onOk;
+}
+
+document.getElementById('confirm-cancel').addEventListener('click', () => {
+  document.getElementById('confirm-dialog').classList.remove('active');
+  confirmCallback = null;
+});
+
+document.getElementById('confirm-ok').addEventListener('click', () => {
+  document.getElementById('confirm-dialog').classList.remove('active');
+  if (confirmCallback) confirmCallback();
+  confirmCallback = null;
+});
+
+// ============================================================
+// FAB
+// ============================================================
+document.getElementById('fab').addEventListener('click', openAddModal);
+
+// Hide fab on dashboard
+const fabEl = document.getElementById('fab');
+const origSwitchTab = switchTab;
+switchTab = function(tab) {
+  origSwitchTab(tab);
+  fabEl.style.display = tab === 'dashboard' ? 'none' : 'flex';
+};
+
+// ============================================================
+// SEARCH
+// ============================================================
+document.getElementById('product-search').addEventListener('input', (e) => {
+  state.searchQuery = e.target.value;
+  renderProducts();
+});
+
+// ============================================================
+// EXPORT / IMPORT
+// ============================================================
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const data = {
+    products: state.products,
+    deliveriesIn: state.deliveriesIn,
+    deliveriesOut: state.deliveriesOut,
+    expenses: state.expenses,
+    exportedAt: new Date().toISOString(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `apple-store-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📤 Данные экспортированы');
+  haptic('medium');
+});
+
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      showConfirm(
+        'Импортировать данные?',
+        'Текущие данные будут заменены данными из файла',
+        () => {
+          if (data.products) state.products = data.products;
+          if (data.deliveriesIn) state.deliveriesIn = data.deliveriesIn;
+          if (data.deliveriesOut) state.deliveriesOut = data.deliveriesOut;
+          if (data.expenses) state.expenses = data.expenses;
+          saveState();
+          renderCurrentTab();
+          showToast('📥 Данные импортированы');
+          haptic('heavy');
+        }
+      );
+    } catch {
+      showToast('❌ Ошибка чтения файла');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  initTelegram();
+  loadAllFromCloud(() => {
+    loadState();
+    renderProducts();
+  });
+}
+
+init();
+</script>
+</body>
+</html>
