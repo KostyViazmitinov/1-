@@ -1371,7 +1371,13 @@ function renderDashboard() {
   const totalInvested = state.products.reduce((s, p) => s + p.buyPrice * (p.quantity || 0), 0);
   const totalSell = state.products.reduce((s, p) => s + p.sellPrice * (p.quantity || 0), 0);
   const totalUnits = state.products.reduce((s, p) => s + (p.quantity || 0), 0);
-  const lowStock = state.products.filter(p => (p.quantity || 0) <= 2);
+  
+  const lowStock = state.products.map(p => {
+    const incomingQty = deliveriesIn
+      .filter(d => d.productId === p.id && d.status !== 'Доставлено' && d.status !== 'Отказ/Возврат')
+      .reduce((sum, d) => sum + (d.quantity || 1), 0);
+    return { ...p, incomingQty, totalExpected: (p.quantity || 0) + incomingQty };
+  }).filter(p => p.totalExpected <= 2);
 
   // Financials
   const successfulOut = deliveriesOut.filter(d => d.status !== 'Отказ/Возврат');
@@ -1441,7 +1447,9 @@ function renderDashboard() {
   if (lowStock.length > 0) {
     html += `<div class="dash-section"><div class="dash-section-title">⚠️ Пора заказывать</div>`;
     lowStock.forEach(p => {
-      html += `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">⚠️</div><div><div class="name">${p.name}</div><div class="detail">${p.category}</div></div></div><div class="right"><div class="amount text-red">${p.quantity || 0} шт</div></div></div>`;
+      let qtyStr = `${p.quantity || 0} шт`;
+      if (p.incomingQty > 0) qtyStr += ` <span style="font-size: 12px; color: var(--text-secondary)">(+${p.incomingQty} в пути)</span>`;
+      html += `<div class="dash-item"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">⚠️</div><div><div class="name">${p.name}</div><div class="detail">${p.category}</div></div></div><div class="right"><div class="amount text-red">${qtyStr}</div></div></div>`;
     });
     html += `</div>`;
   }
