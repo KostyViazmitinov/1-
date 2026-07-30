@@ -496,32 +496,28 @@
     .icon-circle.grad-red { background: var(--red-grad); color: white; }
     .icon-circle.grad-purple { background: var(--purple-grad); color: white; }
 
-    /* === ACCORDION === */
-    details.dash-accordion {
+    /* === BENTO GRID === */
+    .bento-grid {
+      display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px;
+    }
+    .bento-widget {
       background: var(--bg-card); border-radius: var(--radius);
-      margin-bottom: 16px; border: 1px solid var(--border);
-      box-shadow: var(--shadow);
+      padding: 18px 16px; border: 1px solid var(--border); box-shadow: var(--shadow);
       backdrop-filter: var(--card-blur); -webkit-backdrop-filter: var(--card-blur);
+      position: relative; overflow: hidden;
     }
-    details.dash-accordion summary {
-      padding: 18px 16px; font-size: 16px; font-weight: 700;
-      color: var(--text-primary); cursor: pointer; list-style: none;
-      display: flex; align-items: center; justify-content: space-between;
-      user-select: none; letter-spacing: -0.3px;
+    .bento-widget::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      box-shadow: inset 0 1px 0 var(--border-highlight), inset 0 -1px 0 rgba(0,0,0,0.1);
+      background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+      pointer-events: none;
     }
-    details.dash-accordion summary::-webkit-details-marker { display: none; }
-    details.dash-accordion summary::after {
-      content: '▼'; font-size: 11px; color: var(--text-tertiary);
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    .bento-header {
+      font-size: 16px; font-weight: 700; color: var(--text-primary);
+      margin-bottom: 14px; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px;
     }
-    details.dash-accordion[open] summary::after { transform: rotate(180deg); color: var(--accent); }
-    .accordion-content {
-      padding: 0 16px 16px 16px;
-      animation: accordionSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    @keyframes accordionSlide {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
+    .bento-content {
+      display: flex; flex-direction: column;
     }
 
     /* === TOAST === */
@@ -1058,6 +1054,12 @@ function addBundleRow() {
   `;
   container.appendChild(row);
 }
+const USD_RATE = 41.5;
+
+function fmt(n) { return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n); }
+function fmtCurrency(n) { return fmt(n) + ' ₴'; }
+function fmtUSD(n) { return '≈ $' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((n || 0) / USD_RATE); }
+function getMarginClass(m) { return m > 30 ? 'text-green' : (m > 10 ? 'text-yellow' : 'text-red'); }
 
 function updateBundleTotal() {
   let total = 0;
@@ -1076,8 +1078,6 @@ function updateBundleTotal() {
 }
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-function fmt(n) { return new Intl.NumberFormat('uk-UA').format(Math.round(n)); }
-function fmtCurrency(n) { return fmt(n) + ' ₴'; }
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' });
@@ -1251,16 +1251,19 @@ function renderProducts() {
     <div class="summary-card">
       <div class="label">💰 Вложено</div>
       <div class="value">${fmtCurrency(total.invested)}</div>
+      <div class="sub" style="color:var(--text-tertiary);margin-bottom:4px;">${fmtUSD(total.invested)}</div>
       <div class="sub">${state.products.length} позиций</div>
     </div>
     <div class="summary-card">
       <div class="label">📈 На продажу</div>
       <div class="value">${fmtCurrency(total.sellTotal)}</div>
+      <div class="sub" style="color:var(--text-tertiary);margin-bottom:4px;">${fmtUSD(total.sellTotal)}</div>
       <div class="sub">${fmt(total.units)} шт</div>
     </div>
     <div class="summary-card green">
       <div class="label">🎯 Прибыль</div>
       <div class="value">${fmtCurrency(total.profit)}</div>
+      <div class="sub" style="color:var(--green);opacity:0.8;margin-bottom:4px;font-weight:600;">${fmtUSD(total.profit)}</div>
     </div>
     <div class="summary-card">
       <div class="label">📦 На складе</div>
@@ -1346,12 +1349,12 @@ function renderDeliveries() {
     <div class="summary-card">
       <div class="label">📦 В пути к нам</div>
       <div class="value">${inTransit}</div>
-      <div class="sub">${fmtCurrency(totalInValue)}</div>
+      <div class="sub">${fmtCurrency(totalInValue)} <span style="font-size:11px;opacity:0.6;margin-left:4px;">${fmtUSD(totalInValue)}</span></div>
     </div>
     <div class="summary-card">
       <div class="label">🚀 Отправлено</div>
       <div class="value">${shipped}</div>
-      <div class="sub">${fmtCurrency(totalOutRevenue)}</div>
+      <div class="sub">${fmtCurrency(totalOutRevenue)} <span style="font-size:11px;opacity:0.6;margin-left:4px;">${fmtUSD(totalOutRevenue)}</span></div>
     </div>`;
 
   const listEl = document.getElementById('deliveries-list');
@@ -1464,11 +1467,13 @@ function renderExpenses() {
     <div class="summary-card">
       <div class="label">💸 Этот месяц</div>
       <div class="value">${fmtCurrency(thisTotal)}</div>
+      <div class="sub" style="color:var(--text-tertiary);margin-bottom:4px;">${fmtUSD(thisTotal)}</div>
       <div class="sub">${thisMonth.length} записей</div>
     </div>
     <div class="summary-card">
       <div class="label">📅 Прошлый месяц</div>
       <div class="value">${fmtCurrency(lastTotal)}</div>
+      <div class="sub" style="color:var(--text-tertiary);margin-bottom:4px;">${fmtUSD(lastTotal)}</div>
       <div class="sub">${diff !== 0 ? (diff > 0 ? '↑' : '↓') + ' ' + Math.abs(diff).toFixed(0) + '%' : '—'}</div>
     </div>`;
 
@@ -1666,12 +1671,23 @@ function renderDashboard() {
     <div class="summary-card" style="text-align: center; padding: 32px 16px; margin-bottom: 16px; background: linear-gradient(145deg, var(--bg-card), rgba(0,255,136,0.1)); border: 1px solid rgba(0,255,136,0.3); box-shadow: 0 16px 40px rgba(0,255,136,0.1), inset 0 1px 0 rgba(255,255,255,0.2);">
       <div class="label" style="justify-content: center; font-size: 14px; color: var(--green); text-shadow: 0 0 10px var(--green);">ЧИСТАЯ ПРИБЫЛЬ</div>
       <div class="value" style="font-size: 42px; font-weight: 800; letter-spacing: -1.5px; background: var(--green-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${fmtCurrency(netProfit)}</div>
-      <div class="sub" style="opacity: 0.7; margin-top: 8px;">Выручка минус закупка, логистика и расходы</div>
+      <div style="font-size: 16px; font-weight: 600; color: var(--green); opacity: 0.8; margin-top: 4px;">${fmtUSD(netProfit)}</div>
+      <div class="sub" style="opacity: 0.7; margin-top: 12px;">Выручка минус закупка, логистика и расходы</div>
     </div>
 
     <div class="summary-grid">
-      <div class="summary-card"><div class="label">📈 Выручка</div><div class="value">${fmtCurrency(totalRevenue)}</div><div class="sub">${successfulOut.length} продаж</div></div>
-      <div class="summary-card accent"><div class="label">📦 Склад</div><div class="value">${fmtCurrency(totalInvested)}</div><div class="sub">${fmt(totalUnits)} шт</div></div>
+      <div class="summary-card">
+        <div class="label">📈 Выручка</div>
+        <div class="value">${fmtCurrency(totalRevenue)}</div>
+        <div class="sub" style="color:var(--text-tertiary);margin-bottom:4px;">${fmtUSD(totalRevenue)}</div>
+        <div class="sub">${successfulOut.length} продаж</div>
+      </div>
+      <div class="summary-card accent">
+        <div class="label">📦 Склад</div>
+        <div class="value">${fmtCurrency(totalInvested)}</div>
+        <div class="sub" style="color:var(--text-tertiary);margin-bottom:4px;">${fmtUSD(totalInvested)}</div>
+        <div class="sub">${fmt(totalUnits)} шт</div>
+      </div>
     </div>
 
     <!-- CHARTS -->
@@ -1687,79 +1703,90 @@ function renderDashboard() {
       <div style="position: relative; height: 200px; width: 100%;"><canvas id="barChart"></canvas></div>
     </div>
     
-    <details class="dash-accordion" open>
-      <summary>📊 Обзор операций</summary>
-      <div class="accordion-content">
-        <div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--yellow-bg)">🚚</div><div><div class="name">В пути к нам</div><div class="detail">Ожидается доставок</div></div></div><div class="right"><div class="amount">${inTransit}</div></div></div>
-        <div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--green-bg)">🚀</div><div><div class="name">Отправлено клиентам</div><div class="detail">В процессе доставки</div></div></div><div class="right"><div class="amount">${outPending}</div></div></div>
-        <div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">💸</div><div><div class="name">Траты</div><div class="detail">Закупки + Логистика + Расходы</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(cogs + totalDeliveryCost + incomingDeliveryCost + totalExpensesAmount)}</div></div></div>
-        ${returns.length > 0 ? `<div class="dash-item" style="padding:8px 0;border-bottom:none"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">🔙</div><div><div class="name">Возвраты</div><div class="detail">${returns.length} шт</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(returnLoss)}</div><div class="sub">Потеря на доставке</div></div></div>` : ''}
+    <!-- BENTO GRID (Instead of accordions) -->
+    <div class="bento-grid">
+      
+      <!-- Обзор операций -->
+      <div class="bento-widget">
+        <div class="bento-header">📊 Обзор операций</div>
+        <div class="bento-content">
+          <div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--yellow-bg)">🚚</div><div><div class="name">В пути к нам</div><div class="detail">Ожидается доставок</div></div></div><div class="right"><div class="amount">${inTransit}</div></div></div>
+          <div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--green-bg)">🚀</div><div><div class="name">Отправлено клиентам</div><div class="detail">В процессе доставки</div></div></div><div class="right"><div class="amount">${outPending}</div></div></div>
+          <div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">💸</div><div><div class="name">Траты</div><div class="detail">Закупки + Логистика + Расходы</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(cogs + totalDeliveryCost + incomingDeliveryCost + totalExpensesAmount)}</div><div class="sub">${fmtUSD(cogs + totalDeliveryCost + incomingDeliveryCost + totalExpensesAmount)}</div></div></div>
+          ${returns.length > 0 ? `<div class="dash-item" style="padding:8px 0;border-bottom:none"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">🔙</div><div><div class="name">Возвраты</div><div class="detail">${returns.length} шт</div></div></div><div class="right"><div class="amount text-red">${fmtCurrency(returnLoss)}</div><div class="sub">${fmtUSD(returnLoss)} • Потеря на доставке</div></div></div>` : ''}
+        </div>
       </div>
-    </details>
 
-    <details class="dash-accordion">
-      <summary>🔥 Тренды (Что берут)</summary>
-      <div class="accordion-content">
-        ${topHit ? `<div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--purple-bg)">1️⃣</div><div><div class="name">Хит продаж</div><div class="detail">${topHit.p.name}</div></div></div><div class="right"><div class="amount">${topHit.qty} шт</div><div class="sub">${fmtCurrency(topHit.revenue)}</div></div></div>` : '<div class="empty-state" style="padding:10px 0"><div class="desc">Нет данных за этот период</div></div>'}
-        ${topCat ? `<div class="dash-item" style="padding:8px 0;border-bottom:none"><div class="left"><div class="icon-circle" style="background:var(--accent-light)">📁</div><div><div class="name">Лучшая категория</div><div class="detail">${topCat[0]}</div></div></div><div class="right"><div class="amount">${fmtCurrency(topCat[1])}</div></div></div>` : ''}
+      <!-- Тренды -->
+      <div class="bento-widget">
+        <div class="bento-header">🔥 Тренды (Что берут)</div>
+        <div class="bento-content">
+          ${topHit ? `<div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--purple-bg)">1️⃣</div><div><div class="name">Хит продаж</div><div class="detail">${topHit.p.name}</div></div></div><div class="right"><div class="amount">${topHit.qty} шт</div><div class="sub">${fmtCurrency(topHit.revenue)} / ${fmtUSD(topHit.revenue)}</div></div></div>` : '<div class="empty-state" style="padding:10px 0"><div class="desc">Нет данных за этот период</div></div>'}
+          ${topCat ? `<div class="dash-item" style="padding:8px 0;border-bottom:none"><div class="left"><div class="icon-circle" style="background:var(--accent-light)">📁</div><div><div class="name">Лучшая категория</div><div class="detail">${topCat[0]}</div></div></div><div class="right"><div class="amount">${fmtCurrency(topCat[1])}</div><div class="sub">${fmtUSD(topCat[1])}</div></div></div>` : ''}
+        </div>
       </div>
-    </details>
 
-    <details class="dash-accordion">
-      <summary>💎 Золотые товары (Цены и Маржа)</summary>
-      <div class="accordion-content">
-        ${topProfitable ? `<div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--green-bg)">💰</div><div><div class="name">Кормилец</div><div class="detail">${topProfitable.p.name}</div></div></div><div class="right"><div class="amount text-green">+${fmtCurrency(topProfitable.profit)}</div><div class="sub">Принёс чистыми</div></div></div>` : ''}
-        ${maxMargin ? `<div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--yellow-bg)">📈</div><div><div class="name">Макс. наценка</div><div class="detail">${maxMargin.name}</div></div></div><div class="right"><div class="amount">${(maxMargin.m * 100).toFixed(0)}%</div></div></div>` : ''}
-        ${mostExpensive ? `<div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--purple-bg)">💎</div><div><div class="name">Самый дорогой</div><div class="detail">${mostExpensive.name}</div></div></div><div class="right"><div class="amount">${fmtCurrency(mostExpensive.sellPrice)}</div></div></div>` : ''}
-        ${cheapest ? `<div class="dash-item" style="padding:8px 0;border-bottom:none"><div class="left"><div class="icon-circle" style="background:var(--bg-tertiary)">🏷️</div><div><div class="name">Самый доступный</div><div class="detail">${cheapest.name}</div></div></div><div class="right"><div class="amount">${fmtCurrency(cheapest.sellPrice)}</div></div></div>` : ''}
+      <!-- Золотые товары -->
+      <div class="bento-widget">
+        <div class="bento-header">💎 Золотые товары (Цены и Маржа)</div>
+        <div class="bento-content">
+          ${topProfitable ? `<div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--green-bg)">💰</div><div><div class="name">Кормилец</div><div class="detail">${topProfitable.p.name}</div></div></div><div class="right"><div class="amount text-green">+${fmtCurrency(topProfitable.profit)}</div><div class="sub">${fmtUSD(topProfitable.profit)} чистыми</div></div></div>` : ''}
+          ${maxMargin ? `<div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--yellow-bg)">📈</div><div><div class="name">Макс. наценка</div><div class="detail">${maxMargin.name}</div></div></div><div class="right"><div class="amount">${(maxMargin.m * 100).toFixed(0)}%</div></div></div>` : ''}
+          ${mostExpensive ? `<div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--purple-bg)">💎</div><div><div class="name">Самый дорогой</div><div class="detail">${mostExpensive.name}</div></div></div><div class="right"><div class="amount">${fmtCurrency(mostExpensive.sellPrice)}</div><div class="sub">${fmtUSD(mostExpensive.sellPrice)}</div></div></div>` : ''}
+          ${cheapest ? `<div class="dash-item" style="padding:8px 0;border-bottom:none"><div class="left"><div class="icon-circle" style="background:var(--bg-tertiary)">🏷️</div><div><div class="name">Самый доступный</div><div class="detail">${cheapest.name}</div></div></div><div class="right"><div class="amount">${fmtCurrency(cheapest.sellPrice)}</div><div class="sub">${fmtUSD(cheapest.sellPrice)}</div></div></div>` : ''}
+        </div>
       </div>
-    </details>
 
-    <details class="dash-accordion">
-      <summary>👑 Клиенты и Лояльность</summary>
-      <div class="accordion-content">
-        ${loyaltyClients.length > 0 ? `<div style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px 4px;">Предлагайте скидку 10% по промокоду <b>LEV</b>!</div>` : '<div class="empty-state" style="padding:10px 0"><div class="desc">Пока нет частых покупателей</div></div>'}
-        ${loyaltyClients.map((c, i) => `
-          <div class="dash-item" style="${i===0?'border:none;':''}padding:8px 0${i===loyaltyClients.length-1?';border-bottom:none':''}"><div class="left"><div class="icon-circle" style="background:var(--purple-bg);font-size:14px;font-weight:700">${i + 1}</div><div><div class="name">${c.name}</div><div class="detail">${c.count} покупок</div></div></div><div class="right"><div class="amount text-purple">${fmtCurrency(c.spent)}</div></div></div>
-        `).join('')}
-      </div>
-    </details>
-
-    ${deadStock.length > 0 ? `
-    <details class="dash-accordion">
-      <summary>❄️ Мёртвый груз (Не покупают)</summary>
-      <div class="accordion-content">
-        <div style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px 4px;">Товары на складе без продаж в этом периоде. Можно сделать скидку!</div>
-        ${deadStock.map((p, i) => `
-          <div class="dash-item" style="${i===0?'border:none;':''}padding:8px 0${i===deadStock.length-1?';border-bottom:none':''}"><div class="left"><div class="icon-circle" style="background:var(--bg-tertiary)">❄️</div><div><div class="name">${p.name}</div><div class="detail">Лежит на складе</div></div></div><div class="right"><div class="amount">${p.quantity} шт</div><div class="sub">Вложено: ${fmtCurrency(p.buyPrice * p.quantity)}</div></div></div>
-        `).join('')}
-      </div>
-    </details>` : ''}
-
-    ${lowStock.length > 0 ? `
-    <details class="dash-accordion" open>
-      <summary>⚠️ Пора заказывать</summary>
-      <div class="accordion-content">
-        ${lowStock.map((p, i) => {
-          let qtyStr = `${p.quantity || 0} шт`;
-          if (p.incomingQty > 0) qtyStr += ` <span style="font-size: 12px; color: var(--text-secondary)">(+${p.incomingQty} в пути)</span>`;
-          return `<div class="dash-item" style="${i===0?'border:none;':''}padding:8px 0${i===lowStock.length-1?';border-bottom:none':''}"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">⚠️</div><div><div class="name">${p.name}</div><div class="detail">${p.category}</div></div></div><div class="right"><div class="amount text-red">${qtyStr}</div></div></div>`;
-        }).join('')}
-      </div>
-    </details>` : ''}
-
-    <details class="dash-accordion">
-      <summary>⚙️ Синхронизация и Устройства</summary>
-      <div class="accordion-content">
-        <div class="dash-item" style="padding:8px 0"><div class="left"><div class="icon-circle" style="background:${syncEnabled ? 'var(--green-bg)' : 'var(--bg-tertiary)'}">🔗</div><div><div class="name">${syncEnabled ? 'Подключена' : 'Не подключена'}</div><div class="detail">${syncEnabled ? 'Код: ' + storeCode : 'Нажмите ⚙️ в шапке'}</div></div></div><div class="right"><div class="amount" style="font-size:13px">${syncEnabled ? '✅' : '—'}</div></div></div>
-        ${window.activeDevices ? `
-          <div style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 4px 4px;">🟢 Сейчас онлайн (за последние 5 мин):</div>
-          ${Object.values(window.activeDevices).filter(d => Date.now() - d.lastActive < 300000).map((d, i, arr) => `
-            <div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--green-bg);font-size:14px">📱</div><div><div class="name">${d.name}</div><div class="detail">Активен</div></div></div></div>
+      <!-- Клиенты и Лояльность -->
+      <div class="bento-widget">
+        <div class="bento-header">👑 Клиенты и Лояльность</div>
+        <div class="bento-content">
+          ${loyaltyClients.length > 0 ? `<div style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px 4px;">Предлагайте скидку 10% по промокоду <b>LEV</b>!</div>` : '<div class="empty-state" style="padding:10px 0"><div class="desc">Пока нет частых покупателей</div></div>'}
+          ${loyaltyClients.map((c, i) => `
+            <div class="dash-item" style="${i===0?'border:none;':''}padding:8px 0${i===loyaltyClients.length-1?';border-bottom:none':''}"><div class="left"><div class="icon-circle" style="background:var(--purple-bg);font-size:14px;font-weight:700">${i + 1}</div><div><div class="name">${c.name}</div><div class="detail">${c.count} покупок</div></div></div><div class="right"><div class="amount text-purple">${fmtCurrency(c.spent)}</div><div class="sub">${fmtUSD(c.spent)}</div></div></div>
           `).join('')}
-        ` : ''}
+        </div>
       </div>
-    </details>
+
+      <!-- Мёртвый груз (Не покупают) -->
+      ${deadStock.length > 0 ? `
+      <div class="bento-widget">
+        <div class="bento-header">❄️ Мёртвый груз</div>
+        <div class="bento-content">
+          <div style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px 4px;">Товары на складе без продаж. Можно сделать скидку!</div>
+          ${deadStock.map((p, i) => `
+            <div class="dash-item" style="${i===0?'border:none;':''}padding:8px 0${i===deadStock.length-1?';border-bottom:none':''}"><div class="left"><div class="icon-circle" style="background:var(--bg-tertiary)">❄️</div><div><div class="name">${p.name}</div><div class="detail">Лежит на складе</div></div></div><div class="right"><div class="amount">${p.quantity} шт</div><div class="sub">Вложено: ${fmtCurrency(p.buyPrice * p.quantity)} / ${fmtUSD(p.buyPrice * p.quantity)}</div></div></div>
+          `).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- Пора заказывать -->
+      ${lowStock.length > 0 ? `
+      <div class="bento-widget">
+        <div class="bento-header">⚠️ Пора заказывать</div>
+        <div class="bento-content">
+          ${lowStock.map((p, i) => {
+            let qtyStr = `${p.quantity || 0} шт`;
+            if (p.incomingQty > 0) qtyStr += ` <span style="font-size: 12px; color: var(--text-secondary)">(+${p.incomingQty} в пути)</span>`;
+            return `<div class="dash-item" style="${i===0?'border:none;':''}padding:8px 0${i===lowStock.length-1?';border-bottom:none':''}"><div class="left"><div class="icon-circle" style="background:var(--red-bg)">⚠️</div><div><div class="name">${p.name}</div><div class="detail">${p.category}</div></div></div><div class="right"><div class="amount text-red">${qtyStr}</div></div></div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- Синхронизация и Устройства -->
+      <div class="bento-widget">
+        <div class="bento-header">⚙️ Синхронизация</div>
+        <div class="bento-content">
+          <div class="dash-item" style="padding:8px 0; border-bottom:none"><div class="left"><div class="icon-circle" style="background:${syncEnabled ? 'var(--green-bg)' : 'var(--bg-tertiary)'}">🔗</div><div><div class="name">${syncEnabled ? 'Подключена' : 'Не подключена'}</div><div class="detail">${syncEnabled ? 'Код: ' + storeCode : 'Нажмите ⚙️ в шапке'}</div></div></div><div class="right"><div class="amount" style="font-size:13px">${syncEnabled ? '✅' : '—'}</div></div></div>
+          ${window.activeDevices ? `
+            <div style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 4px 4px;">🟢 Сейчас онлайн (за последние 5 мин):</div>
+            ${Object.values(window.activeDevices).filter(d => Date.now() - d.lastActive < 300000).map((d, i, arr) => `
+              <div class="dash-item" style="border:none;padding:8px 0"><div class="left"><div class="icon-circle" style="background:var(--green-bg);font-size:14px">📱</div><div><div class="name">${d.name}</div><div class="detail">Активен</div></div></div></div>
+            `).join('')}
+          ` : ''}
+        </div>
+      </div>
+    </div>
   `;
 
   el.innerHTML = html;
