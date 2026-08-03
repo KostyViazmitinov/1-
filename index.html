@@ -652,6 +652,7 @@
       <button class="segment-btn" data-segment="outgoing">🚀 Исходящие</button>
     </div>
     <div class="summary-grid" id="deliveries-summary"></div>
+    <div class="filter-chips" id="deliveries-filters"></div>
     <div class="data-list" id="deliveries-list"></div>
   </div>
 
@@ -1006,6 +1007,7 @@ let state = {
   deliverySegment: 'incoming',
   productFilter: 'Все',
   expenseFilter: 'Все',
+  deliveryFilter: 'Все',
   searchQuery: '',
   editingItem: null,
   editingType: null,
@@ -1218,6 +1220,7 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 document.querySelectorAll('.segment-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     state.deliverySegment = btn.dataset.segment;
+    state.deliveryFilter = 'Все';
     document.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     haptic('light');
@@ -1338,7 +1341,7 @@ function renderProducts() {
 // ============================================================
 function renderDeliveries() {
   const isIncoming = state.deliverySegment === 'incoming';
-  const items = isIncoming ? state.deliveriesIn : state.deliveriesOut;
+  let items = isIncoming ? [...state.deliveriesIn] : [...state.deliveriesOut];
 
   const inTransit = state.deliveriesIn.filter(d => d.status !== 'Доставлено').length;
   const shipped = state.deliveriesOut.filter(d => d.status !== 'Получено').length;
@@ -1356,6 +1359,37 @@ function renderDeliveries() {
       <div class="value">${shipped}</div>
       <div class="sub">${fmtCurrency(totalOutRevenue)} <span style="font-size:11px;opacity:0.6;margin-left:4px;">${fmtUSD(totalOutRevenue)}</span></div>
     </div>`;
+
+  const filtersEl = document.getElementById('deliveries-filters');
+  const statuses = isIncoming ? DELIVERY_STATUSES_IN : DELIVERY_STATUSES_OUT;
+  const filterOptions = ['Все', ...statuses];
+  
+  if (!state.deliveryFilter || !filterOptions.includes(state.deliveryFilter)) {
+    state.deliveryFilter = 'Все';
+  }
+
+  if (filtersEl) {
+    filtersEl.innerHTML = filterOptions.map(cat =>
+      `<button class="chip ${state.deliveryFilter === cat ? 'active' : ''}" data-filter="${cat}">${cat}</button>`
+    ).join('');
+    filtersEl.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        state.deliveryFilter = chip.dataset.filter;
+        haptic('light');
+        renderDeliveries();
+      });
+    });
+  }
+
+  if (state.deliveryFilter !== 'Все') {
+    items = items.filter(d => d.status === state.deliveryFilter);
+  }
+
+  items.sort((a, b) => {
+    const d1 = isIncoming ? (a.expectedDate || a.createdAt) : (a.date || a.createdAt);
+    const d2 = isIncoming ? (b.expectedDate || b.createdAt) : (b.date || b.createdAt);
+    return new Date(d2 || 0) - new Date(d1 || 0);
+  });
 
   const listEl = document.getElementById('deliveries-list');
   if (items.length === 0) {
@@ -1379,7 +1413,7 @@ function renderDeliveries() {
   } else {
     listEl.innerHTML = items.map((d, i) => {
       const bItems = getDeliveryOutItems(d);
-      const title = bItems.length > 1 
+      const title = bItems.length > 0 
         ? bItems.map(it => { const p = state.products.find(x => x.id === it.productId); return p ? p.name : 'Товар'; }).join(' + ')
         : (d.item || 'Товар');
       const totalQty = bItems.reduce((s, it) => s + (it.quantity || 1), 0);
