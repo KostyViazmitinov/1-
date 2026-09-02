@@ -437,6 +437,21 @@
       padding-right: 36px;
     }
     .form-select option { background: var(--bg-tertiary); color: var(--text-primary); }
+    .custom-select { position: relative; }
+    .custom-select-input { width: 100%; cursor: text; }
+    .custom-select-dropdown {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: 12px; max-height: 220px; overflow-y: auto; z-index: 1000;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12); overscroll-behavior: contain;
+    }
+    .custom-select-dropdown.open { display: block; }
+    .custom-select-option { padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+    .custom-select-option:last-child { border-bottom: none; }
+    .custom-select-option:active { background: var(--bg-secondary); }
+    .custom-select-option .opt-name { font-weight: 500; font-size: 15px; color: var(--text-primary); margin-bottom: 2px; }
+    .custom-select-option .opt-meta { font-size: 13px; color: var(--text-secondary); display: flex; justify-content: space-between; }
+    .custom-select-option .opt-tags { margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .form-textarea { resize: vertical; min-height: 60px; }
     .form-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
@@ -547,6 +562,32 @@
       transition: all 0.2s; font-family: inherit;
     }
     .chip.active { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+    /* === PRODUCT TAGS === */
+    .product-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .product-tag {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+      background: var(--accent-light); color: var(--accent); border: 1px solid rgba(0,122,255,0.2);
+      letter-spacing: 0.3px;
+    }
+    .product-tag::before { content: '#'; opacity: 0.6; }
+    .tag-input-wrap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; background: var(--bg-secondary); border-radius: var(--radius); border: 1px solid var(--border); min-height: 40px; }
+    .tag-input-wrap .tag-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: 600;
+      background: var(--accent-light); color: var(--accent); border: 1px solid rgba(0,122,255,0.2);
+    }
+    .tag-pill .tag-remove { cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; margin-left: 2px; }
+    .tag-pill .tag-remove:hover { opacity: 1; }
+    .tag-input-wrap input {
+      flex: 1; min-width: 80px; border: none; background: transparent;
+      font-size: 13px; font-family: inherit; color: var(--text-primary); outline: none;
+    }
+    .chip.chip-tag { border-color: rgba(0,122,255,0.25); color: var(--accent); font-size: 12px; padding: 4px 10px; }
+    .chip.chip-tag::before { content: '#'; opacity: 0.5; margin-right: 1px; }
+    .chip.chip-tag.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .chip.chip-tag.active::before { opacity: 0.8; }
 
     /* === CONFIRM DIALOG === */
     .confirm-dialog {
@@ -1006,6 +1047,7 @@ let state = {
   currentTab: 'products',
   deliverySegment: 'incoming',
   productFilter: 'Все',
+  productTagFilter: null,
   expenseFilter: 'Все',
   deliveryFilter: 'Все',
   searchQuery: '',
@@ -1038,16 +1080,12 @@ function getDeliveryOutItems(d) {
 function addBundleRow() {
   const container = document.getElementById('bundleItemsContainer');
   if (!container) return;
-  const prodOptionsOut = state.products.map(p => `<option value="${p.id}" data-price="${p.sellPrice}">${p.name} (Остаток: ${p.quantity || 0} шт)</option>`).join('');
   const row = document.createElement('div');
   row.className = 'form-row';
   row.style.marginBottom = '10px';
   row.innerHTML = `
     <div class="form-group" style="flex: 2; margin-bottom: 0;">
-      <select class="form-select" name="bundleProductId[]" required onchange="updateBundleTotal()">
-        <option value="" disabled selected>Товар</option>
-        ${prodOptionsOut}
-      </select>
+      ${getCustomSelectHTML('bundleProductId[]', '', 'deliveryOut')}
     </div>
     <div class="form-group" style="flex: 1; margin-bottom: 0;">
       <input class="form-input" name="bundleItemQty[]" type="number" value="1" required onchange="updateBundleTotal()">
@@ -1056,22 +1094,134 @@ function addBundleRow() {
   `;
   container.appendChild(row);
 }
-const USD_RATE = 41.5;
+const USD_RATE = 44.5;
 
 function fmt(n) { return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n); }
 function fmtCurrency(n) { return fmt(n) + ' ₴'; }
 function fmtUSD(n) { return '≈ $' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((n || 0) / USD_RATE); }
 function getMarginClass(m) { return m > 30 ? 'text-green' : (m > 10 ? 'text-yellow' : 'text-red'); }
 
+// === TAG MANAGEMENT ===
+function handleTagKey(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const input = e.target;
+    const tag = input.value.trim().replace(/,/g, '');
+    if (!tag) return;
+    const wrap = document.getElementById('tagInputWrap');
+    const existing = [...wrap.querySelectorAll('.tag-pill')].map(el => el.firstChild.textContent.trim());
+    if (existing.includes(tag)) { input.value = ''; return; }
+    const pill = document.createElement('span');
+    pill.className = 'tag-pill';
+    pill.innerHTML = `${tag}<span class="tag-remove" onclick="removeTag(this)">×</span>`;
+    wrap.insertBefore(pill, input);
+    input.value = '';
+    syncTagsHidden();
+    haptic('light');
+  }
+}
+
+function removeTag(el) {
+  el.parentElement.remove();
+  syncTagsHidden();
+  haptic('light');
+}
+
+function syncTagsHidden() {
+  const wrap = document.getElementById('tagInputWrap');
+  const hidden = document.getElementById('tagsHidden');
+  if (!wrap || !hidden) return;
+  const tags = [...wrap.querySelectorAll('.tag-pill')].map(el => el.firstChild.textContent.trim());
+  hidden.value = tags.join(',');
+}
+
+// === CUSTOM SELECT ===
+function getCustomSelectHTML(name, selectedId, type) {
+  const p = selectedId ? state.products.find(x => x.id === selectedId) : null;
+  const valText = p ? p.name.replace(/'/g, '&apos;').replace(/"/g, '&quot;') : '';
+  const valPrice = p ? p.sellPrice : 0;
+  return `
+    <div class="custom-select">
+      <input type="text" class="form-input custom-select-input" placeholder="Поиск товара (название, теги)..." value="${valText}" oninput="filterCustomSelect(this, '${type}')" onfocus="openCustomSelect(this, '${type}')" autocomplete="off" required>
+      <input type="hidden" class="custom-select-hidden" name="${name}" value="${selectedId || ''}" data-price="${valPrice}" required>
+      <div class="custom-select-dropdown"></div>
+    </div>
+  `;
+}
+
+function openCustomSelect(inputEl, type) {
+  document.querySelectorAll('.custom-select-dropdown').forEach(el => el.classList.remove('open'));
+  const wrap = inputEl.closest('.custom-select');
+  wrap.querySelector('.custom-select-dropdown').classList.add('open');
+  renderCustomSelectOptions(wrap, inputEl.value, type);
+}
+
+function filterCustomSelect(inputEl, type) {
+  const wrap = inputEl.closest('.custom-select');
+  wrap.querySelector('.custom-select-hidden').value = ''; // clear hidden if typing
+  wrap.querySelector('.custom-select-hidden').dataset.price = '0';
+  wrap.querySelector('.custom-select-dropdown').classList.add('open');
+  renderCustomSelectOptions(wrap, inputEl.value, type);
+}
+
+function renderCustomSelectOptions(wrap, query, type) {
+  const dropdown = wrap.querySelector('.custom-select-dropdown');
+  const q = query.toLowerCase().trim();
+  
+  let filtered = state.products;
+  if (q) {
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || (p.tags && p.tags.some(t => t.toLowerCase().includes(q))));
+  }
+  
+  if (filtered.length === 0) {
+    dropdown.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text-secondary);font-size:14px;">Ничего не найдено</div>`;
+    return;
+  }
+  
+  dropdown.innerHTML = filtered.map(p => {
+    const pName = p.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const tagsHtml = (p.tags && p.tags.length) ? `<div class="opt-tags">${p.tags.map(t => `<span class="product-tag" style="font-size:10px;padding:1px 6px">${t}</span>`).join('')}</div>` : '';
+    return `
+      <div class="custom-select-option" onclick="selectProductOption(this, '${p.id}', '${pName}', ${p.sellPrice || 0})">
+        <div class="opt-name">${p.name}</div>
+        <div class="opt-meta">
+          <span>Остаток: ${p.quantity || 0} шт</span>
+          ${type === 'deliveryOut' ? `<span class="text-green">${fmtCurrency(p.sellPrice || 0)}</span>` : `<span class="text-secondary">Закуп: ${fmtCurrency(p.buyPrice || 0)}</span>`}
+        </div>
+        ${tagsHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+function selectProductOption(optEl, id, name, price) {
+  const wrap = optEl.closest('.custom-select');
+  const inputEl = wrap.querySelector('.custom-select-input');
+  const hiddenEl = wrap.querySelector('.custom-select-hidden');
+  
+  inputEl.value = name;
+  hiddenEl.value = id;
+  hiddenEl.dataset.price = price;
+  
+  wrap.querySelector('.custom-select-dropdown').classList.remove('open');
+  updateBundleTotal();
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.custom-select')) {
+    document.querySelectorAll('.custom-select-dropdown').forEach(el => el.classList.remove('open'));
+  }
+});
+
 function updateBundleTotal() {
   let total = 0;
-  const selects = document.querySelectorAll('select[name="bundleProductId[]"]');
+  const hiddens = document.querySelectorAll('.custom-select-hidden[name="bundleProductId[]"]');
   const qties = document.querySelectorAll('input[name="bundleItemQty[]"]');
-  for (let i = 0; i < selects.length; i++) {
-    const sel = selects[i];
+  for (let i = 0; i < hiddens.length; i++) {
+    const hidden = hiddens[i];
     const qty = parseInt(qties[i].value) || 1;
-    if (sel.selectedIndex > 0) {
-      const price = parseFloat(sel.options[sel.selectedIndex].dataset.price) || 0;
+    if (hidden.value) {
+      const price = parseFloat(hidden.dataset.price) || 0;
       total += price * qty;
     }
   }
@@ -1273,13 +1423,30 @@ function renderProducts() {
       <div class="value">${fmt(total.units)} шт</div>
     </div>`;
 
+  // Collect all unique tags from products
+  const allTags = [...new Set(state.products.flatMap(p => p.tags || []))].sort();
+
   const filtersEl = document.getElementById('product-filters');
-  filtersEl.innerHTML = CATEGORIES.map(cat =>
+  let filtersHTML = CATEGORIES.map(cat =>
     `<button class="chip ${state.productFilter === cat ? 'active' : ''}" data-filter="${cat}">${cat}</button>`
   ).join('');
-  filtersEl.querySelectorAll('.chip').forEach(chip => {
+  if (allTags.length > 0) {
+    filtersHTML += '<span style="display:inline-block;width:1px;height:20px;background:var(--border);margin:0 4px;vertical-align:middle;"></span>';
+    filtersHTML += allTags.map(tag =>
+      `<button class="chip chip-tag ${state.productTagFilter === tag ? 'active' : ''}" data-tag="${tag}">${tag}</button>`
+    ).join('');
+  }
+  filtersEl.innerHTML = filtersHTML;
+  filtersEl.querySelectorAll('.chip:not(.chip-tag)').forEach(chip => {
     chip.addEventListener('click', () => {
       state.productFilter = chip.dataset.filter;
+      haptic('light');
+      renderProducts();
+    });
+  });
+  filtersEl.querySelectorAll('.chip-tag').forEach(chip => {
+    chip.addEventListener('click', () => {
+      state.productTagFilter = state.productTagFilter === chip.dataset.tag ? null : chip.dataset.tag;
       haptic('light');
       renderProducts();
     });
@@ -1287,9 +1454,10 @@ function renderProducts() {
 
   let filtered = [...state.products];
   if (state.productFilter !== 'Все') filtered = filtered.filter(p => p.category === state.productFilter);
+  if (state.productTagFilter) filtered = filtered.filter(p => (p.tags || []).includes(state.productTagFilter));
   if (state.searchQuery) {
     const q = state.searchQuery.toLowerCase();
-    filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || (p.tags || []).some(t => t.toLowerCase().includes(q)));
   }
 
   const listEl = document.getElementById('products-list');
@@ -1309,6 +1477,7 @@ function renderProducts() {
           <span class="data-card-badge ${getMarginBadge(margin)}">${margin.toFixed(0)}%</span>
         </div>
         <div class="data-card-category">${p.category}</div>
+        ${(p.tags && p.tags.length > 0) ? `<div class="product-tags">${p.tags.map(t => `<span class="product-tag">${t}</span>`).join('')}</div>` : ''}
         <div class="data-card-row mt-8">
           <span class="label">Закупка</span><span class="value">${fmtCurrency(p.buyPrice)}</span>
         </div>
@@ -1417,6 +1586,7 @@ function renderDeliveries() {
         ? bItems.map(it => { const p = state.products.find(x => x.id === it.productId); return p ? p.name : 'Товар'; }).join(' + ')
         : (d.item || 'Товар');
       const totalQty = bItems.reduce((s, it) => s + (it.quantity || 1), 0);
+      const outTags = [...new Set(bItems.flatMap(it => { const p = state.products.find(x => x.id === it.productId); return p ? (p.tags || []) : []; }))];
 
       return `
       <div class="data-card" data-id="${d.id}" data-type="deliveryOut" style="animation-delay:${i * 0.04}s">
@@ -1424,6 +1594,7 @@ function renderDeliveries() {
           <div class="data-card-title">${title}</div>
           <span class="data-card-badge ${getStatusBadge(d.status)}">${d.status}</span>
         </div>
+        ${outTags.length > 0 ? `<div class="product-tags" style="margin-bottom:4px">${outTags.map(t => `<span class="product-tag">${t}</span>`).join('')}</div>` : ''}
         <div class="data-card-row"><span class="label">Клиент</span><span class="value">${d.client || '—'}</span></div>
         <div class="data-card-row"><span class="label">Способ</span><span class="value">${d.type || '—'}</span></div>
         <div class="data-card-row"><span class="label">Дата</span><span class="value">${fmtDate(d.date)}</span></div>
@@ -1989,19 +2160,23 @@ function getFormHTML(type, item) {
         </div>
         <div class="form-group"><label class="form-label">Количество</label>
           <input class="form-input" name="quantity" type="number" value="${v.quantity || 0}" placeholder="0" required></div>
+        <div class="form-group"><label class="form-label">Теги</label>
+          <div class="tag-input-wrap" id="tagInputWrap">
+            ${(v.tags || []).map(t => `<span class="tag-pill">${t}<span class="tag-remove" onclick="removeTag(this)">×</span></span>`).join('')}
+            <input type="text" id="tagInput" placeholder="Введите тег и Enter..." onkeydown="handleTagKey(event)">
+          </div>
+          <input type="hidden" name="tags" id="tagsHidden" value="${(v.tags || []).join(',')}">
+          <div class="form-hint" style="margin-top:4px">Enter чтобы добавить, × чтобы удалить</div>
+        </div>
         <div class="form-group"><label class="form-label">Примечание</label>
           <input class="form-input" name="note" value="${v.note || ''}" placeholder="Необязательно"></div>
         <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
         ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
 
     case 'deliveryIn': {
-      const prodOptionsIn = state.products.map(p => `<option value="${p.id}" ${v.productId === p.id ? 'selected' : ''}>${p.name}</option>`).join('');
       return `
         <div class="form-group"><label class="form-label">Что едет (Товар)</label>
-          <select class="form-select" name="productId" required>
-            <option value="" disabled ${!v.productId ? 'selected' : ''}>Выберите товар из базы</option>
-            ${prodOptionsIn}
-          </select>
+          ${getCustomSelectHTML('productId', v.productId, 'deliveryIn')}
           <div class="form-hint">Если товара нет в списке, сначала добавьте его на вкладке "Склад"</div>
         </div>
         <div class="form-row">
@@ -2031,15 +2206,10 @@ function getFormHTML(type, item) {
       const items = getDeliveryOutItems(v);
       if (items.length === 0) items.push({ productId: '', quantity: 1 }); // Default empty row
       
-      const prodOptionsOut = (selectedId) => state.products.map(p => `<option value="${p.id}" ${selectedId === p.id ? 'selected' : ''} data-price="${p.sellPrice}">${p.name} (Остаток: ${p.quantity || 0} шт)</option>`).join('');
-      
       const itemsHtml = items.map((it, i) => `
         <div class="form-row" style="margin-bottom: 10px;">
           <div class="form-group" style="flex: 2; margin-bottom: 0;">
-            <select class="form-select" name="bundleProductId[]" required onchange="updateBundleTotal()">
-              <option value="" disabled ${!it.productId ? 'selected' : ''}>Товар</option>
-              ${prodOptionsOut(it.productId)}
-            </select>
+            ${getCustomSelectHTML('bundleProductId[]', it.productId, 'deliveryOut')}
           </div>
           <div class="form-group" style="flex: 1; margin-bottom: 0;">
             <input class="form-input" name="bundleItemQty[]" type="number" value="${it.quantity || 1}" required onchange="updateBundleTotal()">
@@ -2116,6 +2286,11 @@ document.getElementById('modal-form').addEventListener('submit', (e) => {
   ['buyPrice', 'sellPrice', 'quantity', 'cost', 'amount', 'deliveryCost'].forEach(k => {
     if (data[k] !== undefined) data[k] = parseFloat(data[k]) || 0;
   });
+
+  // Parse tags
+  if (data.tags !== undefined) {
+    data.tags = data.tags ? data.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+  }
 
   const type = state.editingType;
   const isEdit = !!state.editingItem;
