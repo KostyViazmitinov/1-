@@ -4026,8 +4026,8 @@ function getFormHTML(type, item) {
           <div class="form-group"><label class="form-label">Статус</label>
             <select class="form-select" name="status">${DELIVERY_STATUSES_IN.map(s => `<option value="${s}" ${v.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
         </div>
-        <div class="form-group"><label class="form-label">Трек-номер</label>
-          <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно"></div>
+        <div class="form-group"><label class="form-label">Клиент</label>
+          <input class="form-input" name="client" value="${v.client || ''}" placeholder="Имя или ник"></div>
         <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
         ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
 
@@ -4061,8 +4061,8 @@ function getFormHTML(type, item) {
         </div>
         <div class="form-group"><label class="form-label">Общая цена продажи ₴</label>
           <input class="form-input" name="sellPrice" type="number" step="0.01" value="${v.sellPrice || ''}" placeholder="0" required></div>
-        <div class="form-group"><label class="form-label">Клиент</label>
-          <input class="form-input" name="client" value="${v.client || ''}" placeholder="Имя или ник"></div>
+        <div class="form-group"><label class="form-label">Трек-номер</label>
+          <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно"></div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Способ</label>
             <select class="form-select" name="type">${DELIVERY_TYPES.map(t => `<option value="${t}" ${v.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
@@ -4075,8 +4075,8 @@ function getFormHTML(type, item) {
           <div class="form-group"><label class="form-label">Статус</label>
             <select class="form-select" name="status">${DELIVERY_STATUSES_OUT.map(s => `<option value="${s}" ${v.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
         </div>
-        <div class="form-group"><label class="form-label">Трек-номер</label>
-          <input class="form-input" name="trackNumber" value="${v.trackNumber || ''}" placeholder="Необязательно"></div>
+        <div class="form-group"><label class="form-label">Клиент (Имя)</label>
+          <input class="form-input" name="client" value="${v.client || ''}" placeholder="Имя или ник"></div>
         <div class="form-group"><label class="form-label">Комментарий</label>
           <textarea class="form-textarea" name="comment" placeholder="Например: Стекло поклеили бесплатно">${v.comment || ''}</textarea></div>
         ${item ? `
