@@ -2329,7 +2329,7 @@ function renderDeliveries() {
           <span class="data-card-badge ${getStatusBadge(d.status)}">${d.status}</span>
         </div>
         ${outTags.length > 0 ? `<div class="product-tags" style="margin-bottom:4px">${outTags.map(t => `<span class="product-tag">${t}</span>`).join('')}</div>` : ''}
-        <div class="data-card-row"><span class="label">Клиент</span><span class="value">${d.client || '—'}</span></div>
+        <div class="data-card-row"><span class="label">ТТН</span><span class="value" style="font-family:monospace;font-size:13px;word-break:break-all;">${d.trackNumber || '—'}</span></div>
         <div class="data-card-row"><span class="label">Способ</span><span class="value">${d.type || '—'}</span></div>
         <div class="data-card-row"><span class="label">Дата</span><span class="value">${fmtDate(d.date)}</span></div>
         <div class="data-card-row"><span class="label">Кол-во</span><span class="value">${totalQty} шт</span></div>
