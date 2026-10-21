@@ -1763,6 +1763,7 @@ function saveLocal() {
   localStorage.setItem(STORAGE_KEYS.deliveriesIn, JSON.stringify(state.deliveriesIn));
   localStorage.setItem(STORAGE_KEYS.deliveriesOut, JSON.stringify(state.deliveriesOut));
   localStorage.setItem(STORAGE_KEYS.expenses, JSON.stringify(state.expenses));
+  if (state.goals) localStorage.setItem('asm_goals', JSON.stringify(state.goals));
 }
 
 function saveState() {
@@ -1794,6 +1795,10 @@ function loadState() {
   state.deliveriesIn = loadData(STORAGE_KEYS.deliveriesIn);
   state.deliveriesOut = loadData(STORAGE_KEYS.deliveriesOut);
   state.expenses = loadData(STORAGE_KEYS.expenses);
+  try {
+    const savedGoals = localStorage.getItem('asm_goals');
+    if (savedGoals) state.goals = JSON.parse(savedGoals);
+  } catch(e) {}
   const savedDevId = localStorage.getItem('asm_dev_id');
   if (savedDevId) state.deviceId = savedDevId;
   else {
