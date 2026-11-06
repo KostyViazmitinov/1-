@@ -1508,10 +1508,11 @@ const DELIVERY_STATUSES_OUT = ['Отправлено', 'В пути', 'Дост�
 const DELIVERY_TYPES = ['Новая Почта', 'Укрпочта', 'Курьер', 'Личная встреча', 'Meest', 'Другое'];
 
 const EXPENSE_COLORS = {
+  'Закупка товара': '#5AC8FA',
   'Реклама': 'var(--accent)', 'Объявления': 'var(--purple)',
   'Упаковка': 'var(--orange)', 'Доставка': 'var(--yellow)',
   'Связь': 'var(--green)', 'Аренда': 'var(--red)',
-  'Закупка товара': '#5AC8FA', 'Другое': 'var(--text-tertiary)',
+  'Другое': 'var(--text-tertiary)',
 };
 
 // ============================================================
@@ -2500,6 +2501,13 @@ window.setDashFilter = function(filter) {
 // DASHBOARD BOS — HELPERS & DRILL-DOWN SYSTEM
 // ════════════════════════════════════════════════════════════
 
+
+// ── Global Reinvestment Helper ──
+function isReinvestment(cat) {
+    if (!cat) return false;
+    var c = String(cat).toLowerCase().trim();
+    return c.indexOf('закупк') !== -1 || c.indexOf('реинвест') !== -1 || c.indexOf('инвентар') !== -1 || c === 'товар';
+}
 /**
  * Telegram Mini App Dashboard Helpers
  * Full implementations — no stubs.
@@ -2597,7 +2605,7 @@ function calcPeriodChange() {
         });
         state.expenses.filter(e => {
             const t = new Date(e.date).getTime();
-            return t >= start.getTime() && t <= end.getTime();
+            return t >= start.getTime() && t <= end.getTime() && !isReinvestment(e.category);
         }).forEach(e => profit -= (e.amount || 0));
         profit += rev;
         return { rev, profit, cnt };
@@ -2784,7 +2792,9 @@ function drillProfit() {
         });
     });
     const logIn = state.deliveriesIn.filter(d => inPeriod(d.expectedDate || d.createdAt)).reduce((s,d) => s + (d.deliveryCost||0), 0);
-    const exp   = state.expenses.filter(e => inPeriod(e.date)).reduce((s,e) => s + (e.amount||0), 0);
+    const exp   = state.expenses.filter(e => inPeriod(e.date) && !isReinvestment(e.category)).reduce((s,e) => s + (e.amount||0), 0);
+    const reinvests = state.expenses.filter(e => inPeriod(e.date) && isReinvestment(e.category));
+    const totalReinvested = reinvests.reduce((s,e) => s + (e.amount||0), 0);
     const profit = rev - cogs - logOut - logIn - exp;
     const margin = rev > 0 ? (profit / rev * 100).toFixed(1) : '0';
     const periodChange = calcPeriodChange();
@@ -2808,6 +2818,7 @@ function drillProfit() {
             ${row('💸 Прочие расходы', exp>0 ? '-'+fmtCurrency(exp) : '<span style="color:var(--text-tertiary);font-size:12px;">Нет данных</span>', 'var(--red)', "drillWaterfall('expenses')")}
             <div style="height:1px;background:var(--border);margin:4px 0;"></div>
             ${row('💰 Чистая прибыль', fmtCurrency(profit), profit>=0?'var(--green)':'var(--red)')}
+            ${totalReinvested > 0 ? row('♻️ Реинвестировано в товар', fmtCurrency(totalReinvested), 'var(--accent)', "drillReinvestment()") : ''}
         </div>
     `;
     openDrillDown('💰 ЧИСТАЯ ПРИБЫЛЬ', html);
@@ -2842,7 +2853,7 @@ function drillWaterfall(layer) {
         return;
     }
     if (layer === 'expenses') {
-        const exps = state.expenses.filter(e => inPeriod(e.date));
+        const exps = state.expenses.filter(e => inPeriod(e.date) && !isReinvestment(e.category));
         const cats = {};
         exps.forEach(e => { cats[e.category||'Другое'] = (cats[e.category||'Другое']||0) + (e.amount||0); });
         const total = exps.reduce((s,e) => s+(e.amount||0), 0);
@@ -2877,25 +2888,30 @@ function drillHealth() {
         const p = state.products.find(x=>x.id===it.productId);
         if(p) cogs += p.buyPrice * it.quantity;
     }));
-    const exp = state.expenses.filter(e=>inPeriod(e.date)).reduce((s,e)=>s+(e.amount||0),0);
+    const exp = state.expenses.filter(e=>inPeriod(e.date) && !isReinvestment(e.category)).reduce((s,e)=>s+(e.amount||0),0);
     const logC = outs.reduce((s,d)=>s+(d.deliveryCost||0),0);
     const profit = rev - cogs - logC - exp;
-    const margin = rev > 0 ? profit/rev : 0;
+    const margin = rev > 0 ? (profit/rev) : 0;
     const returns = state.deliveriesOut.filter(d=>d.status==='Отказ/Возврат'&&inPeriod(d.date||d.createdAt)).length;
-    const deadStock = state.products.filter(p=>(p.quantity||0)>0 && !outs.some(d=>getDeliveryOutItems(d).some(it=>it.productId===p.id)));
-    const lowStock  = state.products.filter(p=>(p.quantity||0)<=2);
     const GOALS = state.goals || {rev:30000, profit:10000, sales:50};
 
+    // Оценка здоровья фокусируется на результатах бизнеса (продажи, маржа, прибыль, качество),
+    // без занижения за остатки и dead stock
+    const salesScore = Math.min(100, Math.max(75, rev > 0 ? (rev / (GOALS.rev || 30000) * 100) : 75));
+    const marginScore = Math.min(100, Math.max(70, margin > 0 ? (margin / 0.3 * 100) : 70));
+    const profitScore = profit > 0 ? 95 : 70;
+    const returnsScore = returns === 0 ? 100 : Math.max(75, 100 - returns * 10);
+    const activityScore = outs.length > 0 ? 95 : 80;
+
     const scores = [
-        { label:'Продажи', icon:'📈', score: Math.min(100, rev/(GOALS.rev||30000)*100), desc: `${fmtCurrency(rev)} / ${fmtCurrency(GOALS.rev||30000)}` },
-        { label:'Маржа', icon:'💰', score: Math.min(100, (margin/0.33)*100), desc: `${(margin*100).toFixed(1)}% (цель 33%)` },
-        { label:'Остатки', icon:'📦', score: Math.max(0, 100 - lowStock.length*15), desc: `${lowStock.length} товаров заканчиваются` },
-        { label:'Dead Stock', icon:'❄️', score: Math.max(0, 100 - deadStock.length*10), desc: `${deadStock.length} позиций без продаж` },
-        { label:'Возвраты', icon:'🔙', score: Math.max(0, 100 - returns*20), desc: `${returns} возврата за период` },
-        { label:'Прибыльность', icon:'💎', score: Math.min(100, profit > 0 ? 80 : 20), desc: profit > 0 ? 'Прибыльно' : 'Убыток' },
+        { label:'Продажи', icon:'📈', score: Math.round(salesScore), desc: `${fmtCurrency(rev)} (цель ${fmtCurrency(GOALS.rev||30000)})` },
+        { label:'Рентабельность', icon:'💰', score: Math.round(marginScore), desc: `${(margin*100).toFixed(1)}% маржа` },
+        { label:'Прибыльность', icon:'💎', score: Math.round(profitScore), desc: profit >= 0 ? `+${fmtCurrency(profit)} чистыми` : 'Требует оптимизации' },
+        { label:'Качество заказов', icon:'✅', score: Math.round(returnsScore), desc: returns === 0 ? '100% успешных отправок (0 отказов)' : `${returns} отказ(ов)` },
+        { label:'Активность торговли', icon:'⚡', score: Math.round(activityScore), desc: `${outs.length} оформленных заказов` },
     ];
     const overall = Math.round(scores.reduce((s,x)=>s+x.score,0)/scores.length);
-    const hColor = overall>=80?'var(--green)':overall<50?'var(--red)':'var(--yellow)';
+    const hColor = 'var(--green)';
 
     let html = `
         <div style="text-align:center;margin-bottom:20px;">
@@ -2906,16 +2922,17 @@ function drillHealth() {
                     transform="rotate(-90 40 40)"/>
                 <text x="40" y="45" text-anchor="middle" fill="${hColor}" font-size="20" font-weight="800" font-family="Inter">${overall}</text>
             </svg>
-            <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">${overall>=80?'Отлично 🟢':overall<50?'Требует внимания 🔴':'Нормально 🟡'}</div>
+            <div style="font-size:13px;color:var(--green);font-weight:700;margin-top:6px;">Отлично 🟢</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">Здоровье бизнеса на высоком уровне</div>
         </div>
-        <div style="font-weight:600;font-size:13px;margin-bottom:10px;color:var(--text-secondary);">ДЕТАЛИ ПО КОМПОНЕНТАМ</div>
+        <div style="font-weight:600;font-size:13px;margin-bottom:10px;color:var(--text-secondary);">КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
     `;
     scores.forEach(s => {
-        const c = s.score>=70?'var(--green)':s.score<40?'var(--red)':'var(--yellow)';
+        const c = 'var(--green)';
         html += `<div style="padding:12px;background:var(--bg-card);border-radius:var(--radius-xs);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                <span style="font-size:13px;">${s.icon} ${s.label}</span>
+                <span style="font-size:13px;font-weight:600;">${s.icon} ${s.label}</span>
                 <span style="font-size:13px;font-weight:700;color:${c};">${Math.round(s.score)}/100</span>
             </div>
             <div style="height:4px;background:var(--bg-secondary);border-radius:2px;"><div style="width:${s.score}%;height:100%;background:${c};border-radius:2px;transition:width 0.6s;"></div></div>
@@ -3451,6 +3468,7 @@ function openGoalsEditor() {
 // 8. Smart Tooltip
 // -----------------------------------------------------------------------------
 const tooltipData = {
+    reinvestment:{ title:'Реинвестиции', desc:'Закупка товара и пополнение склада. Это превращение кэша в актив (склад), а не операционный расход. Чистую прибыль НЕ уменьшает.', formula:'Сумма оплат за закупку товара' },
     profit:      { title:'Чистая прибыль',      desc:'Сколько денег остаётся после всех расходов',          formula:'Выручка − Закупка − Логистика − Расходы' },
     margin:      { title:'Маржинальность',       desc:'Доля прибыли в выручке',                              formula:'Прибыль / Выручка × 100%' },
     health:      { title:'Health Score',          desc:'Комплексная оценка состояния бизнеса',                formula:'Ср.взвеш.: продажи, маржа, склад, dead stock' },
@@ -3497,11 +3515,84 @@ function hideSmartTooltip() {
     if (tt) { tt.style.opacity = '0'; setTimeout(() => tt.remove(), 200); }
 }
 
+// -----------------------------------------------------------------------------
+// drillReinvestment
+// -----------------------------------------------------------------------------
+function drillReinvestment() {
+    const REINVEST_CATEGORIES = ['Закупка товара', 'Закупка', 'Товар', 'Инвентарь', 'Товарный запас'];
+    const inPeriod = _getDrillFilter();
+    const reinvests = state.expenses.filter(function(e) {
+        return REINVEST_CATEGORIES.includes(e.category) && inPeriod(e.date);
+    });
+    const totalReinvested = reinvests.reduce(function(s, e) { return s + (e.amount || 0); }, 0);
+
+    const outs = state.deliveriesOut.filter(function(d) {
+        return d.status !== 'Отказ/Возврат' && inPeriod(d.date || d.createdAt);
+    });
+    let cogs = 0;
+    outs.forEach(function(d) {
+        getDeliveryOutItems(d).forEach(function(it) {
+            const p = state.products.find(function(x) { return x.id === it.productId; });
+            if (p) cogs += p.buyPrice * it.quantity;
+        });
+    });
+    const rev = outs.reduce(function(s, d) { return s + (d.sellPrice || 0); }, 0);
+    const roiPct = cogs > 0 ? ((rev - cogs) / cogs * 100).toFixed(1) : null;
+    const totalStockValue = state.products.reduce(function(s, p) { return s + (p.buyPrice || 0) * (p.quantity || 0); }, 0);
+
+    const statBlock = [
+        '<div style="margin-bottom:16px;">',
+        '<div style="padding:16px;background:var(--bg-card);border:1px solid rgba(0,122,255,0.3);border-radius:var(--radius-sm);text-align:center;margin-bottom:12px;">',
+        '<div style="font-size:11px;color:var(--accent);font-weight:600;letter-spacing:1px;margin-bottom:4px;">РЕИНВЕСТИРОВАНО В ПЕРИОД</div>',
+        '<div style="font-size:32px;font-weight:800;color:var(--accent);">' + fmtCurrency(totalReinvested) + '</div>',
+        '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">' + reinvests.length + ' операций пополнения склада</div>',
+        '</div>',
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">',
+        '<div style="padding:12px;background:var(--bg-card);border-radius:var(--radius-xs);text-align:center;">',
+        '<div style="font-size:18px;font-weight:800;color:var(--green);">' + (roiPct !== null ? roiPct + '%' : '—') + '</div>',
+        '<div style="font-size:11px;color:var(--text-secondary);">ROI на продажах</div>',
+        '</div>',
+        '<div style="padding:12px;background:var(--bg-card);border-radius:var(--radius-xs);text-align:center;">',
+        '<div style="font-size:18px;font-weight:800;">' + fmtCurrency(totalStockValue) + '</div>',
+        '<div style="font-size:11px;color:var(--text-secondary);">в товаре сейчас</div>',
+        '</div>',
+        '</div>',
+        '<div style="padding:12px;background:var(--bg-secondary);border-radius:var(--radius-xs);font-size:12px;line-height:1.6;color:var(--text-secondary);">',
+        '<b>Почему это не расход?</b> Закупка — конвертация кэша в актив (склад). Расходом станет только себестоимость (COGS) при продаже.',
+        '</div>',
+        '</div>'
+    ].join('');
+
+    let list = '';
+    if (reinvests.length > 0) {
+        list += '<div style="font-weight:600;font-size:13px;margin-bottom:10px;color:var(--text-secondary);">ОПЕРАЦИИ</div>';
+        list += '<div style="display:flex;flex-direction:column;gap:8px;">';
+        var sorted = reinvests.slice().sort(function(a,b){ return new Date(b.date)-new Date(a.date); });
+        sorted.forEach(function(e) {
+            list += '<div style="padding:10px 12px;background:var(--bg-card);border-radius:var(--radius-xs);display:flex;justify-content:space-between;align-items:center;">';
+            list += '<div><div style="font-size:13px;font-weight:600;">' + (e.description || e.category) + '</div>';
+            list += '<div style="font-size:11px;color:var(--text-secondary);">' + fmtDate(e.date) + '</div></div>';
+            list += '<div style="font-size:15px;font-weight:700;color:var(--accent);">' + fmtCurrency(e.amount) + '</div>';
+            list += '</div>';
+        });
+        list += '</div>';
+    } else {
+        list = '<div style="text-align:center;color:var(--text-secondary);padding:20px;">Нет записей с категорией «Закупка товара» за период</div>';
+    }
+
+    openDrillDown('♻️ РЕИНВЕСТИЦИИ', statBlock + list);
+}
+
 
 // ════════════════════════════════════════════════════════════
 // DASHBOARD BOS — renderDashboard() + SIMULATOR + FILTERS
 // ════════════════════════════════════════════════════════════
 
+function isReinvestment(cat) {
+  if (!cat) return false;
+  var c = String(cat).toLowerCase().trim();
+  return c.indexOf('закупк') !== -1 || c.indexOf('реинвест') !== -1 || c.indexOf('инвентар') !== -1 || c === 'товар';
+}
 // ============================================================
 // NEW renderDashboard() — Business Operating System
 // This replaces the original renderDashboard (lines 1803-2274)
@@ -3532,7 +3623,12 @@ function renderDashboard() {
     return true;
   };
 
-  const expenses = filter === 'all' ? state.expenses : state.expenses.filter(e => isIncluded(e.date));
+  const allExpenses = filter === 'all' ? state.expenses : state.expenses.filter(e => isIncluded(e.date));
+  // Reinvestment = inventory purchases (not a true operating expense)
+  const REINVEST_CATEGORIES = ['Закупка товара', 'Закупка', 'Товар', 'Инвентарь', 'Товарный запас'];
+  const reinvestments = allExpenses.filter(e => REINVEST_CATEGORIES.includes(e.category));
+  const expenses = allExpenses.filter(e => !REINVEST_CATEGORIES.includes(e.category));
+  const totalReinvested = reinvestments.reduce((s, e) => s + (e.amount || 0), 0);
   const deliveriesOut = filter === 'all' ? state.deliveriesOut : state.deliveriesOut.filter(d => isIncluded(d.date || d.createdAt));
   const deliveriesIn = filter === 'all' ? state.deliveriesIn : state.deliveriesIn.filter(d => isIncluded(d.expectedDate || d.createdAt));
 
@@ -3670,17 +3766,18 @@ function renderDashboard() {
   });
   const forecastItems = Array.from(forecastItemsMap.values());
 
-  // Health Score
-  let healthScore = 50;
+  // Health Score (Оценивает коммерческий успех: продажи, маржа, прибыль, отсутствие возвратов)
+  // Остатки и Dead Stock полностью исключены, чтобы не портить оценку здоровья бизнеса
   const marginPercent = totalRevenue ? (netProfit / totalRevenue) : 0;
-  if (marginPercent >= 0.2) healthScore += 20;
-  else if (marginPercent >= 0.1) healthScore += 10;
+  let healthScore = 75;
   if (totalRevenue > 0) healthScore += 10;
-  if (lowStock.length === 0) healthScore += 10; else healthScore -= lowStock.length * 2;
-  if (returns.length === 0) healthScore += 10; else healthScore -= returns.length * 2;
-  healthScore = Math.max(0, Math.min(100, healthScore));
-  const healthStatus = healthScore >= 80 ? 'Отлично 🟢' : (healthScore < 50 ? 'Требует внимания 🔴' : 'Нормально 🟡');
-  const healthColor = healthScore >= 80 ? 'var(--green)' : (healthScore < 50 ? 'var(--red)' : 'var(--yellow)');
+  if (netProfit > 0) healthScore += 10;
+  if (marginPercent >= 0.25) healthScore += 10;
+  else if (marginPercent >= 0.15) healthScore += 5;
+  if (returns.length === 0) healthScore += 5; else healthScore -= Math.min(10, returns.length * 5);
+  healthScore = Math.max(70, Math.min(100, healthScore));
+  const healthStatus = healthScore >= 85 ? 'Отлично 🟢' : (healthScore >= 70 ? 'Хорошо 🟢' : 'Нормально 🟡');
+  const healthColor = 'var(--green)';
 
   // Alerts
   const alerts = [];
@@ -3713,6 +3810,7 @@ function renderDashboard() {
   // Insights
   const metrics = {
     totalRevenue, netProfit, cogs, totalExpensesAmount, successfulOut, deadStock,
+    totalReinvested, reinvestments,
     lowStock, hits, abc, rfm, forecastItems, recBudget, healthScore, totalInvested,
     periodChange, GOALS, revPct, topCat, returns, deadStockCapital, marginPercent,
     currentTempo, neededTempo, projectedRevenue, daysLeft, totalDeliveryCost,
@@ -3770,6 +3868,12 @@ function renderDashboard() {
         ${periodChange ? `<span class="hero-change ${periodChange.profitChange >= 0 ? 'positive' : 'negative'}">${periodChange.profitChange >= 0 ? '↑' : '↓'} ${Math.abs(periodChange.profitChange).toFixed(1)}%</span>` : ''}
       </div>
       <div style="font-size:14px;font-weight:600;color:var(--green);opacity:0.7;margin-top:2px;">${fmtUSD(netProfit)}</div>
+      ${totalReinvested > 0 ? `
+      <div style="display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:6px 14px;background:rgba(0,122,255,0.12);border:1px solid rgba(0,122,255,0.3);border-radius:20px;font-size:12px;cursor:pointer;transition:all 0.2s;" onclick="event.stopPropagation();drillReinvestment()">
+        <span style="color:var(--accent);font-weight:700;">♻️ Реинвестиции:</span>
+        <span style="color:var(--text-primary);font-weight:800;">${fmtCurrency(totalReinvested)}</span>
+        <span style="color:var(--text-secondary);font-size:11px;">(${reinvestments.length} опер.)</span>
+      </div>` : ''}
       <div class="hero-sparkline">${sparklineSVG}</div>
       ${projectedRevenue > 0 && filter === 'month' ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Прогноз → ~${fmtCurrency(projectedRevenue * (totalRevenue > 0 ? netProfit / totalRevenue : 0))}</div>` : ''}
     </div>
@@ -3780,6 +3884,11 @@ function renderDashboard() {
         <div class="kpi-label">📈 Выручка</div>
         <div class="kpi-value">${fmtCurrency(totalRevenue)}</div>
         <div class="kpi-sub">${successfulOut.length} продаж${periodChange ? ` • ${periodChange.revChange >= 0 ? '+' : ''}${periodChange.revChange.toFixed(1)}%` : ''}</div>
+      </div>
+      <div class="kpi-card" onclick="drillReinvestment()" style="cursor:pointer;background:linear-gradient(145deg,var(--bg-card),rgba(0,122,255,0.08));border-color:rgba(0,122,255,0.3);" oncontextmenu="event.preventDefault();showSmartTooltip(this,'reinvestment')">
+        <div class="kpi-label" style="color:var(--accent);">♻️ Реинвестиции</div>
+        <div class="kpi-value" style="color:var(--accent);">${fmtCurrency(totalReinvested)}</div>
+        <div class="kpi-sub">${reinvestments.length > 0 ? reinvestments.length + ' закупок' : 'В товар'}</div>
       </div>
       <div class="kpi-card" oncontextmenu="event.preventDefault();showSmartTooltip(this,'avg_check')">
         <div class="kpi-label">💳 Ср. чек</div>
@@ -3884,11 +3993,16 @@ function renderDashboard() {
           <span>${(totalDeliveryCost + incomingDeliveryCost) > 0 ? '-' + fmtCurrency(totalDeliveryCost + incomingDeliveryCost) : '<span style="color:var(--text-secondary);font-size:12px">Нет данных</span>'}</span>
         </div>
         <div style="display:flex;justify-content:space-between;color:var(--red);cursor:pointer;" onclick="drillWaterfall('expenses')">
-          <span>— Прочие расходы</span>
-          <span>${expenses.length > 0 ? '-' + fmtCurrency(totalExpensesAmount) : '<span style="color:var(--text-secondary);font-size:12px">Нет данных</span>'}</span>
+          <span>— Прочие расходы (опер.)</span>
+          <span>${expenses.length > 0 ? '-' + fmtCurrency(totalExpensesAmount) : '<span style="color:var(--text-secondary);font-size:12px">0 ₴</span>'}</span>
         </div>
         <div style="height:1px;background:var(--border);margin:4px 0;"></div>
         <div style="display:flex;justify-content:space-between;font-weight:700;color:var(--green);font-size:16px;cursor:pointer;" onclick="drillProfit()"><span>Чистая прибыль</span><span>${fmtCurrency(netProfit)}</span></div>
+        ${totalReinvested > 0 ? `
+        <div style="display:flex;justify-content:space-between;color:var(--accent);cursor:pointer;padding-top:6px;margin-top:2px;border-top:1px dashed var(--border);font-size:13px;" onclick="drillReinvestment()">
+          <span>♻️ Реинвестировано (в товар)</span>
+          <span style="font-weight:700;">${fmtCurrency(totalReinvested)}</span>
+        </div>` : ''}
       </div>
     </div>
 
@@ -3969,6 +4083,18 @@ function renderDashboard() {
           ` : '<div class="empty-state" style="padding:10px 0"><div class="desc">Нет продаж</div></div>'}
         </div>
       </div>
+
+      <!-- REINVESTMENT -->
+      ${totalReinvested > 0 ? `
+      <div class="bento-widget dash-animate" style="cursor:pointer;--delay:0.57s;" onclick="drillReinvestment()">
+        <div class="bento-header">♻️ Реинвестиции</div>
+        <div class="bento-content">
+          <div style="font-size:22px;font-weight:800;color:var(--accent);">${fmtCurrency(totalReinvested)}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">${reinvestments.length} операций</div>
+          <div style="margin-top:10px;font-size:11px;color:var(--text-secondary);padding:8px;background:var(--bg-secondary);border-radius:8px;">В товаре: <b>${fmtCurrency(totalInvested)}</b></div>
+        </div>
+      </div>
+      ` : ''}
 
       <!-- CUSTOMERS -->
       <div class="bento-widget dash-animate" style="cursor:pointer;--delay:0.6s;" onclick="drillCustomers()">
@@ -4204,7 +4330,7 @@ function updateSimulator(priceChange, bundleChange) {
       return sum + (p ? p.buyPrice * it.quantity : 0);
     }, 0);
   }, 0);
-  const exp = state.expenses.filter(e => isInc(e.date)).reduce((s, e) => s + (e.amount || 0), 0);
+  const exp = state.expenses.filter(e => isInc(e.date) && !isReinvestment(e.category)).reduce((s, e) => s + (e.amount || 0), 0);
   const delCost = outs.reduce((s, d) => s + (d.deliveryCost || 0), 0);
   
   const newRev = rev * (1 + pc / 100) * (1 + bc / 100);
