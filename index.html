@@ -1401,7 +1401,8 @@
       <button class="header-btn icon" id="exportBtn" title="Экспорт">📤</button>
     </div>
     <h1 class="header-title"><span class="sync-dot offline" id="syncDot"></span> Lev Store</h1>
-    <div class="header-right">
+    <div class="header-right" style="display:flex;align-items:center;gap:6px;">
+      <button type="button" class="header-btn" onclick="copyContextForClaude()" title="Скопировать для Claude" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;font-size:12px;font-weight:700;background:rgba(0,122,255,0.18);border:1px solid rgba(0,122,255,0.45);border-radius:12px;color:var(--accent);cursor:pointer;">🤖 Claude</button>
       <button class="header-btn icon" id="settingsBtn" title="Настройки">⚙️</button>
       <button class="header-btn icon" id="importBtn" title="Импорт">📥</button>
     </div>
