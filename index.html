@@ -3584,6 +3584,141 @@ function drillReinvestment() {
 }
 
 
+// -----------------------------------------------------------------------------
+// copyContextForClaude — Экспорт контекста магазина для любого браузерного Claude
+// -----------------------------------------------------------------------------
+window.copyContextForClaude = function() {
+  const inPeriod = _getDrillFilter();
+  const outs = state.deliveriesOut.filter(function(d) {
+    return d.status !== 'Отказ/Возврат' && inPeriod(d.date || d.createdAt);
+  });
+  const returns = state.deliveriesOut.filter(function(d) {
+    return d.status === 'Отказ/Возврат' && inPeriod(d.date || d.createdAt);
+  });
+
+  let rev = 0, cogs = 0, logOut = 0;
+  const productSales = {};
+
+  outs.forEach(function(d) {
+    rev += (d.sellPrice || 0);
+    logOut += (d.deliveryCost || 0);
+    getDeliveryOutItems(d).forEach(function(it) {
+      const p = state.products.find(function(x) { return x.id === it.productId; });
+      if (p) {
+        cogs += (p.buyPrice || 0) * (it.quantity || 1);
+        if (!productSales[p.id]) productSales[p.id] = { name: p.name, qty: 0, rev: 0 };
+        productSales[p.id].qty += (it.quantity || 1);
+        productSales[p.id].rev += (it.quantity || 1) * (p.sellPrice || 0);
+      }
+    });
+  });
+
+  const periodExp = state.expenses.filter(function(e) { return inPeriod(e.date); });
+  const opExp = periodExp.filter(function(e) { return !isReinvestment(e.category); }).reduce(function(s, e) { return s + (e.amount || 0); }, 0);
+  const reinvestExp = periodExp.filter(function(e) { return isReinvestment(e.category); }).reduce(function(s, e) { return s + (e.amount || 0); }, 0);
+
+  const netProfit = rev - cogs - logOut - opExp;
+  const margin = rev > 0 ? ((netProfit / rev) * 100).toFixed(1) : 0;
+  const avgCheck = outs.length > 0 ? (rev / outs.length).toFixed(1) : 0;
+
+  const totalStockCost = state.products.reduce(function(s, p) { return s + (p.buyPrice || 0) * (p.quantity || 0); }, 0);
+  const totalStockRetail = state.products.reduce(function(s, p) { return s + (p.sellPrice || 0) * (p.quantity || 0); }, 0);
+  const totalUnits = state.products.reduce(function(s, p) { return s + (p.quantity || 0); }, 0);
+
+  const lowStock = state.products.filter(function(p) { return (p.quantity || 0) <= 2; });
+  const soldIds = new Set(Object.keys(productSales));
+  const deadStock = state.products.filter(function(p) { return (p.quantity || 0) > 0 && !soldIds.has(p.id); });
+  const deadStockFrozen = deadStock.reduce(function(s, p) { return s + (p.buyPrice || 0) * (p.quantity || 0); }, 0);
+
+  const topProducts = Object.values(productSales)
+    .sort(function(a, b) { return b.rev - a.rev; })
+    .slice(0, 10)
+    .map(function(x, i) { return (i + 1) + '. ' + x.name + ': ' + x.qty + ' шт. на ' + x.rev.toLocaleString('ru-RU') + ' ₴'; })
+    .join('\n');
+
+  const goals = state.goals || { rev: 30000, profit: 10000 };
+  const goalPct = goals.rev > 0 ? ((rev / goals.rev) * 100).toFixed(1) : 0;
+
+  const filterName = {
+    today: 'Сегодня',
+    week: 'Эта неделя',
+    month: 'Этот месяц',
+    year: 'Этот год',
+    all: 'Всё время',
+    custom: 'Выбранный период'
+  }[state.dashFilter] || 'Этот месяц';
+
+  const promptText = [
+    '📊 [ДАННЫЕ МАГАЗИНА LEV STORE ДЛЯ ФИНАНСОВОГО АНАЛИЗА]',
+    'Период: ' + filterName + ' (актуально на ' + new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'}) + ')',
+    '',
+    '1. ОСНОВНЫЕ ФИНАНСЫ:',
+    '• Выручка: ' + rev.toLocaleString('ru-RU') + ' ₴ (' + outs.length + ' заказов)',
+    '• Себестоимость проданного (COGS): ' + cogs.toLocaleString('ru-RU') + ' ₴',
+    '• Логистика: ' + logOut.toLocaleString('ru-RU') + ' ₴',
+    '• Операционные расходы: ' + opExp.toLocaleString('ru-RU') + ' ₴',
+    '• ЧИСТАЯ ПРИБЫЛЬ: ' + netProfit.toLocaleString('ru-RU') + ' ₴ (Рентабельность: ' + margin + '%)',
+    '• Средний чек: ' + avgCheck + ' ₴',
+    '• Возвраты: ' + returns.length + ' шт.',
+    '',
+    '2. РЕИНВЕСТИЦИИ В ТОВАР:',
+    '• Закуплено товара в этот период: ' + reinvestExp.toLocaleString('ru-RU') + ' ₴',
+    '(Закупка товара — это конвертация кэша в товарный актив склада, чистую прибыль она не уменьшает)',
+    '',
+    '3. СОСТОЯНИЕ СКЛАДА:',
+    '• Всего товаров в наличии: ' + totalUnits + ' шт. (' + state.products.length + ' уникальных позиций)',
+    '• Вложено в склад (себестоимость): ' + totalStockCost.toLocaleString('ru-RU') + ' ₴',
+    '• Розничная стоимость склада: ' + totalStockRetail.toLocaleString('ru-RU') + ' ₴',
+    '• Заканчиваются (<= 2 шт): ' + lowStock.length + ' позиций',
+    '• Мёртвый груз (без продаж): ' + deadStock.length + ' позиций (заморожено ' + deadStockFrozen.toLocaleString('ru-RU') + ' ₴)',
+    '',
+    '4. ТОП ПРОДАЖ ЗА ПЕРИОД:',
+    topProducts || 'Нет продаж в выбранном периоде',
+    '',
+    '5. ВЫПОЛНЕНИЕ ПЛАНА:',
+    '• План по выручке: ' + (goals.rev || 30000).toLocaleString('ru-RU') + ' ₴',
+    '• Выполнено: ' + rev.toLocaleString('ru-RU') + ' ₴ (' + goalPct + '%)',
+    '',
+    '---',
+    'Клод, проведи глубокий финансовый аудит Lev Store на основе этих живых цифр. Оцени маржинальность, темп продаж, риски склада и дай конкретные советы:',
+    '1. Что срочно нужно сделать по складу и дозакупкам?',
+    '2. Как лучше распродать мёртвый груз и высвободить деньги?',
+    '3. Что предпринять, чтобы перевыполнить план по чистой прибыли?'
+  ].join('\n');
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(promptText).then(function() {
+      notifySuccess();
+    }).catch(function() {
+      fallbackCopy(promptText);
+    });
+  } else {
+    fallbackCopy(promptText);
+  }
+
+  function fallbackCopy(text) {
+    var tempInput = document.createElement('textarea');
+    tempInput.value = text;
+    tempInput.style.position = 'fixed';
+    tempInput.style.left = '-9999px';
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
+    notifySuccess();
+  }
+
+  function notifySuccess() {
+    if (typeof haptic === 'function') haptic('success');
+    if (typeof showToast === 'function') {
+      showToast('✅ Скопировано! Вставьте (Cmd+V) в claude.ai', true);
+    } else {
+      alert('✅ Данные скопированы! Откройте claude.ai и нажмите Вставить (Cmd+V)');
+    }
+  }
+};
+
+
 // ════════════════════════════════════════════════════════════
 // DASHBOARD BOS — renderDashboard() + SIMULATOR + FILTERS
 // ════════════════════════════════════════════════════════════
@@ -3914,6 +4049,7 @@ function renderDashboard() {
       <button class="quick-action-btn" onclick="state.currentTab='products';switchTab('products');setTimeout(openAddModal,100)">+ Товар</button>
       <button class="quick-action-btn" onclick="state.currentTab='deliveries';state.deliverySegment='incoming';switchTab('deliveries');setTimeout(openAddModal,100)">📦 Закупка</button>
       <button class="quick-action-btn" onclick="openGoalsEditor()">🎯 Цели</button>
+      <button class="quick-action-btn" onclick="copyContextForClaude()" style="background:rgba(0,122,255,0.12);border-color:rgba(0,122,255,0.4);color:var(--accent);font-weight:700;">🤖 Для Claude</button>
     </div>
 
     <!-- BUSINESS HEALTH -->
