@@ -1909,7 +1909,7 @@ function renderCustomSelectOptions(wrap, query, type) {
   const dropdown = wrap.querySelector('.custom-select-dropdown');
   const q = query.toLowerCase().trim();
   
-  let filtered = state.products;
+  let filtered = state.products.filter(p => !p.isArchived);
   if (q) {
     filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || (p.tags && p.tags.some(t => t.toLowerCase().includes(q))));
   }
@@ -2131,8 +2131,26 @@ function renderCurrentTab() {
 // ============================================================
 // PRODUCTS
 // ============================================================
+
+// Archive / Unarchive product helper
+window.toggleArchiveProduct = function(id, shouldArchive) {
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  p.isArchived = !!shouldArchive;
+  if (p.isArchived) p.quantity = 0; // discontinued products have 0 active stock
+  saveState();
+  haptic('medium');
+  closeModal(() => {
+    renderCurrentTab();
+    showToast(shouldArchive ? '📁 Товар отправлен в архив' : '📦 Товар возвращён из архива', true);
+  });
+};
+
 function renderProducts() {
-  const total = state.products.reduce((acc, p) => {
+  const activeProducts = state.products.filter(p => !p.isArchived);
+  const archivedProducts = state.products.filter(p => p.isArchived);
+
+  const total = activeProducts.reduce((acc, p) => {
     const qty = p.quantity || 0;
     acc.invested += p.buyPrice * qty;
     acc.sellTotal += p.sellPrice * qty;
@@ -2146,7 +2164,7 @@ function renderProducts() {
       <div class="label">💰 Вложено</div>
       <div class="value">${fmtCurrency(total.invested)}</div>
       <div class="sub" style="color:var(--text-tertiary);margin-bottom:4px;">${fmtUSD(total.invested)}</div>
-      <div class="sub">${state.products.length} позиций</div>
+      <div class="sub">${activeProducts.length} активных ${archivedProducts.length > 0 ? `(${archivedProducts.length} в архиве)` : ""}</div>
     </div>
     <div class="summary-card">
       <div class="label">📈 На продажу</div>
@@ -2165,12 +2183,15 @@ function renderProducts() {
     </div>`;
 
   // Collect all unique tags from products
-  const allTags = [...new Set(state.products.flatMap(p => p.tags || []))].sort();
+  const allTags = [...new Set(activeProducts.flatMap(p => p.tags || []))].sort();
 
   const filtersEl = document.getElementById('product-filters');
   let filtersHTML = CATEGORIES.map(cat =>
     `<button class="chip ${state.productFilter === cat ? 'active' : ''}" data-filter="${cat}">${cat}</button>`
   ).join('');
+  if (archivedProducts.length > 0) {
+    filtersHTML += `<button class="chip ${state.productFilter === 'Архив' ? 'active' : ''}" data-filter="Архив" style="color:var(--text-secondary);border:1px dashed var(--border);">📁 Архив (${archivedProducts.length})</button>`;
+  }
   if (allTags.length > 0) {
     filtersHTML += '<span style="display:inline-block;width:1px;height:20px;background:var(--border);margin:0 4px;vertical-align:middle;"></span>';
     filtersHTML += allTags.map(tag =>
@@ -2193,8 +2214,13 @@ function renderProducts() {
     });
   });
 
-  let filtered = [...state.products];
-  if (state.productFilter !== 'Все') filtered = filtered.filter(p => p.category === state.productFilter);
+  let filtered;
+  if (state.productFilter === 'Архив') {
+    filtered = [...archivedProducts];
+  } else {
+    filtered = [...activeProducts];
+    if (state.productFilter !== 'Все') filtered = filtered.filter(p => p.category === state.productFilter);
+  }
   if (state.productTagFilter) filtered = filtered.filter(p => (p.tags || []).includes(state.productTagFilter));
   if (state.searchQuery) {
     const q = state.searchQuery.toLowerCase();
@@ -2215,7 +2241,7 @@ function renderProducts() {
       <div class="data-card" data-id="${p.id}" data-type="product" style="animation-delay:${i * 0.04}s">
         <div class="data-card-header">
           <div class="data-card-title">${p.name}</div>
-          <span class="data-card-badge ${getMarginBadge(margin)}">${margin.toFixed(0)}%</span>
+          ${p.isArchived ? `<span class="data-card-badge" style="background:var(--bg-secondary);color:var(--text-secondary);font-size:11px;">📁 В архиве</span>` : `<span class="data-card-badge ${getMarginBadge(margin)}">${margin.toFixed(0)}%</span>`}
         </div>
         <div class="data-card-category">${p.category}</div>
         ${(p.tags && p.tags.length > 0) ? `<div class="product-tags">${p.tags.map(t => `<span class="product-tag">${t}</span>`).join('')}</div>` : ''}
@@ -3768,12 +3794,13 @@ function renderDashboard() {
   const deliveriesOut = filter === 'all' ? state.deliveriesOut : state.deliveriesOut.filter(d => isIncluded(d.date || d.createdAt));
   const deliveriesIn = filter === 'all' ? state.deliveriesIn : state.deliveriesIn.filter(d => isIncluded(d.expectedDate || d.createdAt));
 
-  // Inventory stats
-  const totalInvested = state.products.reduce((s, p) => s + p.buyPrice * (p.quantity || 0), 0);
-  const totalSell = state.products.reduce((s, p) => s + p.sellPrice * (p.quantity || 0), 0);
-  const totalUnits = state.products.reduce((s, p) => s + (p.quantity || 0), 0);
+  // Inventory stats (active products only)
+  const activeProducts = state.products.filter(p => !p.isArchived);
+  const totalInvested = activeProducts.reduce((s, p) => s + p.buyPrice * (p.quantity || 0), 0);
+  const totalSell = activeProducts.reduce((s, p) => s + p.sellPrice * (p.quantity || 0), 0);
+  const totalUnits = activeProducts.reduce((s, p) => s + (p.quantity || 0), 0);
   
-  const lowStock = state.products.map(p => {
+  const lowStock = activeProducts.map(p => {
     const incomingQty = deliveriesIn
       .filter(d => d.productId === p.id && d.status !== 'Доставлено' && d.status !== 'Отказ/Возврат')
       .reduce((sum, d) => sum + (d.quantity || 1), 0);
@@ -3842,7 +3869,7 @@ function renderDashboard() {
   
   const topHit = hits[0];
   const topProfitable = [...hits].sort((a,b) => b.profit - a.profit)[0];
-  const deadStock = state.products.filter(p => (p.quantity || 0) > 0 && !productSalesMap[p.id]);
+  const deadStock = activeProducts.filter(p => (p.quantity || 0) > 0 && !productSalesMap[p.id]);
   const deadStockCapital = deadStock.reduce((s, p) => s + (p.buyPrice || 0) * (p.quantity || 0), 0);
   
   const topCat = Object.entries(catSales).sort((a,b) => b[1] - a[1])[0];
@@ -4597,7 +4624,16 @@ function getFormHTML(type, item) {
         <div class="form-group"><label class="form-label">Примечание</label>
           <input class="form-input" name="note" value="${v.note || ''}" placeholder="Необязательно"></div>
         <button type="submit" class="btn btn-primary">${item ? 'Сохранить' : 'Добавить'}</button>
-        ${item ? '<button type="button" class="btn btn-danger" onclick="deleteItem()">Удалить</button>' : ''}`;
+        ${item ? `
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            ${v.isArchived ? `
+              <button type="button" class="btn" style="flex:1;background:rgba(0,122,255,0.15);color:var(--accent);font-weight:700;" onclick="toggleArchiveProduct('${v.id}', false)">📦 Разархивировать</button>
+            ` : `
+              <button type="button" class="btn" style="flex:1;background:var(--bg-secondary);color:var(--text-secondary);font-weight:600;" onclick="toggleArchiveProduct('${v.id}', true)">📁 В архив</button>
+            `}
+            <button type="button" class="btn btn-danger" style="flex:1;" onclick="deleteItem()">Удалить</button>
+          </div>
+        ` : ''}`;
 
     case 'deliveryIn': {
       return `
@@ -4843,7 +4879,28 @@ function deleteItem() {
     }
 
     switch (type) {
-      case 'product': state.products = state.products.filter(p => p.id !== item.id); break;
+      case 'product': {
+        const hasHistory = state.deliveriesOut.some(d => getDeliveryOutItems(d).some(it => it.productId === item.id)) ||
+                           state.deliveriesIn.some(d => d.productId === item.id);
+        if (hasHistory) {
+          // Safeguard: Do NOT hard-delete products with past sales/deliveries!
+          const prod = state.products.find(p => p.id === item.id);
+          if (prod) {
+            prod.isArchived = true;
+            prod.quantity = 0;
+          }
+          saveState();
+          haptic('medium');
+          closeModal(() => {
+            renderCurrentTab();
+            showToast('📁 Товар перемещён в архив (история продаж сохранена)', true);
+          });
+          return;
+        } else {
+          state.products = state.products.filter(p => p.id !== item.id);
+        }
+        break;
+      }
       case 'deliveryIn': state.deliveriesIn = state.deliveriesIn.filter(d => d.id !== item.id); break;
       case 'deliveryOut': state.deliveriesOut = state.deliveriesOut.filter(d => d.id !== item.id); break;
       case 'expense': state.expenses = state.expenses.filter(e => e.id !== item.id); break;
