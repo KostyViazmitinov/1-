@@ -2227,6 +2227,14 @@ function renderProducts() {
     filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || (p.tags || []).some(t => t.toLowerCase().includes(q)));
   }
 
+  // Сортировка: от меньшего остатка к большему (заканчивающиеся товары первыми)
+  filtered.sort((a, b) => {
+    const qA = a.quantity || 0;
+    const qB = b.quantity || 0;
+    if (qA !== qB) return qA - qB;
+    return (a.name || '').localeCompare(b.name || '', 'ru');
+  });
+
   const listEl = document.getElementById('products-list');
   if (filtered.length === 0) {
     listEl.innerHTML = `<div class="empty-state"><div class="icon">📦</div><div class="title">Товаров пока нет</div><div class="desc">Нажмите + чтобы добавить первый товар</div></div>`;
@@ -2255,7 +2263,7 @@ function renderProducts() {
           <span class="label">Маржа</span><span class="value ${getMarginClass(margin)}">${fmtCurrency(marginAbs)}</span>
         </div>
         <div class="data-card-row">
-          <span class="label">На складе</span><span class="value">${p.quantity || 0} шт</span>
+          <span class="label">На складе</span><span class="value" style="${(p.quantity || 0) === 0 ? 'color:var(--red);font-weight:700;' : ((p.quantity || 0) <= 2 ? 'color:var(--yellow);font-weight:700;' : '')}">${(p.quantity || 0) === 0 ? '⚠️ 0 шт' : ((p.quantity || 0) <= 2 ? `⚡ ${p.quantity} шт` : `${p.quantity} шт`)}</span>
         </div>
         <div class="data-card-footer">
           <span class="label">Потенц. прибыль</span>
